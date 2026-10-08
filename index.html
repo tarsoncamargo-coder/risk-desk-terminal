@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Risk Desk // Nasdaq</title>
+<meta name="description" content="Risk Desk Nasdaq V10 - terminal macro e cross-asset">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">RISK DESK <b>//</b> NASDAQ</div>
+  <div class="actions">
+    <span id="conn" class="badge">Conectando...</span>
+    <span id="upd" class="micro">-</span>
+    <button id="refresh" class="btn">Atualizar dados</button>
+  </div>
+</header>
+<nav>
+  <button class="on" data-p="hoje">Hoje</button>
+  <button data-p="evento">Evento</button>
+  <button data-p="macro">Macro</button>
+  <button data-p="nasdaq">Nasdaq</button>
+  <button data-p="historico">Historico / Backtest</button>
+</nav>
+<main>
+<div id="notice" class="notice hidden"></div>
+<section id="hoje" class="page on"><h1>Visao executiva</h1><div class="sub">Contexto macro e cross-asset. Sem sinal operacional.</div><div id="today" class="grid g4"></div><div class="grid g2 gap-top"><article class="card"><div class="ct">Ultimo evento</div><div id="lastEvent"></div></article><article class="card"><div class="ct">Qualidade dos dados</div><div id="quality"></div></article></div></section>
+<section id="evento" class="page"><h1>Eventos</h1><div class="sub">CPI historico, MAIN 2018-2025 e SHADOW 2026.</div><div class="filters"><select id="fy" class="sel"><option value="">Todos os anos</option></select><select id="fr" class="sel"><option value="">MAIN + SHADOW</option><option value="MAIN_2018_2025">MAIN 2018-2025</option><option value="SHADOW_2026">SHADOW 2026</option></select><select id="fp" class="sel"><option value="">Todos os playbooks</option></select><select id="fm" class="sel"><option value="">Todos os Market States</option></select></div><div class="tbl"><table><thead><tr><th>Data</th><th>Dataset</th><th>Surpresa CPI</th><th>Shock</th><th>Playbook</th><th>PRE60</th><th>Fatores</th></tr></thead><tbody id="events"></tbody></table></div></section>
+<section id="macro" class="page"><h1>Macro</h1><div class="sub">Growth x Inflation. Regime lento e playbooks de contexto.</div><div class="grid g2"><article class="card"><div class="ct">Regime macro mais recente</div><div id="macroLast"></div></article><article class="card"><div class="ct">Quadrante Growth x Inflation</div><div class="quad"><div class="q q1"><b>Estagflacao</b><span>Growth ↓ / Inflation ↑</span></div><div class="q q2"><b>Reflacao</b><span>Growth ↑ / Inflation ↑</span></div><div class="q q3"><b>Desaceleracao</b><span>Growth ↓ / Inflation ↓</span></div><div class="q q4"><b>Goldilocks</b><span>Growth ↑ / Inflation ↓</span></div><div id="qp" class="dot hidden"></div></div></article></div><article class="card gap-top"><div class="ct">Distribuicao dos playbooks - MAIN</div><div id="pbd" class="dist"></div></article><article class="card gap-top"><div class="ct">Historico de regimes</div><div class="tbl limit"><table><thead><tr><th>Data</th><th>Growth</th><th>Inflation</th><th>Playbook</th><th>Dataset</th></tr></thead><tbody id="macroRows"></tbody></table></div></article></section>
+<section id="nasdaq" class="page"><h1>Nasdaq</h1><div class="sub">Market State pre-evento e Sigma NY. Nao e recomendacao de entrada.</div><article class="card"><div class="ct">Market State por janela - ultimo evento</div><div class="tbl"><table><thead><tr><th>Janela</th><th>NQ</th><th>ZQ</th><th>ZT</th><th>ZN</th><th>DXY</th><th>Score</th><th>Fatores</th><th>Estado</th></tr></thead><tbody id="market"></tbody></table></div></article><div class="grid g2 gap-top"><article class="card"><div class="ct">Sigma NY</div><div class="filters"><select id="sd" class="sel"></select><select id="sm" class="sel"></select></div><div id="sigma" class="sigma"></div></article><article class="card"><div class="ct">Como ler</div><p class="muted">1σ / 2σ / 3σ medem extensao estatistica. Nao representam entrada, alvo ou stop.</p><p class="muted">Quando a leitura estiver vazia, o terminal mostra <b>Aquecimento / sem leitura</b>.</p></article></div></section>
+<section id="historico" class="page"><h1>Historico / Backtest</h1><div class="sub">Governanca e estatisticas descritivas. Sem backtest operacional.</div><div id="hist" class="grid g4"></div><article class="card gap-top warning-card"><div class="ct">Backtest operacional</div><div class="mv warn">NAO EXECUTADO / NAO AUTORIZADO</div><div class="ms">Nao existem PnL, win rate ou drawdown operacionais desta camada.</div></article><article class="card gap-top"><div class="ct">Model Governance</div><div class="tbl"><table><thead><tr><th>Componente</th><th>Versao</th><th>Status</th><th>Operacional</th><th>Motivo</th></tr></thead><tbody id="gov"></tbody></table></div></article></section>
+</main>
+<aside id="drawer" class="drawer"><div class="dh"><div><div class="micro">DETALHE DO EVENTO</div><h2 id="dt">-</h2></div><button id="dc" class="btn">Fechar</button></div><div id="db" class="db"></div></aside><div id="back" class="back"></div>
+<footer class="foot"><span>RISK DESK V10 · CONTEXT / RESEARCH</span><span>Trade signal: NAO AUTORIZADO · Probabilidade operacional: NAO AUTORIZADA</span></footer>
+<script src="app.js"></script>
+</body>
+</html>
