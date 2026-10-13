@@ -16,7 +16,7 @@ function quality(asset,q,now) {
   if(asset==="ZQ"&&a<=60)return {state:"SPARSE",canConfirm:false,age:a,source:src};
   return {state:"DELAYED",canConfirm:false,age:a,source:src};
 }
-function eventState(e,s,m,now) {
+function eventState(e,s,m,now,matrix) {
   now=Number.isFinite(now)?now:Date.now();
   if(!e||dt(e.scheduled_ts_utc)===null)return {mode:"NO_EVENT",tab:"live",label:"SEM EVENTO",why:"Sem evento verificável"};
   var t0=dt(e.scheduled_ts_utc);
@@ -32,8 +32,15 @@ function eventState(e,s,m,now) {
   var releaseAt=dt(e.available_at);
   var verified=(m||[]).some(function(x){return x.event_id===e.event_id&&/^POST(1|5|15|30|60)$/.test(String(x.window||""))&&
     x.product_status==="LEITURA_DISPONIVEL"&&dt(x.as_of_utc)!==null&&dt(x.as_of_utc)>=Math.max(t0,releaseAt||t0);});
-  if(!verified)return {mode:"WAIT_POST_MARKET",tab:"live",label:"PÓS-EVENTO · MERCADO PENDENTE",why:"Semântica disponível; falta janela POST observada e validada"};
-  return {mode:"POST_CONFIRMATION",tab:"event",label:"CONFIRMAÇÃO PÓS-EVENTO",why:"Release, semântica e janela POST observada presentes"};
+  var matrixReady=(matrix||[]).some(function(r){return r.event_id===e.event_id&&
+    /^POST(1|5|15|30|60)$/.test(String(r.market_window||""))&&
+    r.product_status==="LEITURA_DISPONIVEL"&&r.raw_value!==null&&
+    Number.isFinite(Number(r.raw_value))&&
+    ["ALIGNED","CONTRARY","NEUTRAL"].includes(String(r.alignment||""));});
+  if(!verified||!matrixReady)return {mode:"WAIT_POST_MARKET",tab:"live",label:"PÓS-EVENTO · MERCADO PENDENTE",
+    why:"Semântica publicada, mas falta janela POST e alinhamento cross-asset observados na própria matriz"};
+  return {mode:"POST_CONFIRMATION",tab:"event",label:"CONFIRMAÇÃO PÓS-EVENTO",
+    why:"Release, semântica, janela POST e matriz de reação observada presentes"};
 }
 function classifyLayer(r,quotes,now) {
   var asset=key[r.layer_key]||null;
