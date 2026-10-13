@@ -124,6 +124,97 @@ function renderMarketV2(){
   }).join(""):'<tr><td colspan="9" class="muted">Sem leituras V2.</td></tr>';
 }
 
+
+function alignmentLabel(x){
+  const m={ALIGNED:"A FAVOR",CONTRARY:"CONTRA",NEUTRAL:"NEUTRO",BASE:"BASE",WAITING:"AGUARDANDO",WAITING_EVENT_SEMANTIC:"AGUARDANDO EVENTO",WAITING_MARKET_DATA:"AGUARDANDO MERCADO",UNAVAILABLE:"INDISPONIVEL"};
+  return m[x]||x||"—";
+}
+function alignmentClass(x){
+  if(x==="ALIGNED")return"cf-good";
+  if(x==="CONTRARY")return"cf-bad";
+  if(x==="NEUTRAL"||x==="BASE")return"cf-neutral";
+  return"cf-wait";
+}
+function alignmentPos(x){
+  if(x==="ALIGNED")return 88;
+  if(x==="CONTRARY")return 12;
+  return 50;
+}
+function directionalValue(r){
+  if(!r)return"—";
+  if(r.layer_key==="EVENT")return uiTokenV2(r.observed_direction||"AGUARDANDO");
+  if(r.value_unit==="SIGMA_Z")return r.raw_value==null?uiTokenV2(r.observed_direction||"UNAVAILABLE"):sign(r.raw_value,2)+" z";
+  return r.raw_value==null?uiTokenV2(r.observed_direction||"UNAVAILABLE"):sign(r.raw_value,4)+"%";
+}
+function renderDirectionalGraph(){
+  const el=$("directionalGraph"),rel=$("relatedEvents");
+  if(!el||!rel)return;
+  const rows=S.productDirectional||[];
+  if(!rows.length){
+    el.innerHTML='<div class="muted">Aguardando matriz de confluencia.</div>';
+    rel.innerHTML="";
+    return;
+  }
+  const counted=rows.filter(r=>["ALIGNED","CONTRARY","NEUTRAL"].includes(r.alignment));
+  const fav=counted.filter(r=>r.alignment==="ALIGNED").length;
+  const contra=counted.filter(r=>r.alignment==="CONTRARY").length;
+  const neutro=counted.filter(r=>r.alignment==="NEUTRAL").length;
+  el.innerHTML=
+    '<div class="cf-summary"><span><b>'+fav+'</b> a favor</span><span><b>'+contra+'</b> contra</span><span><b>'+neutro+'</b> neutro</span><span class="micro">Sem score ponderado</span></div>'+
+    '<div class="cf-axis"><span>CONTRA</span><span>NEUTRO</span><span>A FAVOR</span></div>'+
+    rows.map(r=>{
+      const cls=alignmentClass(r.alignment),pos=alignmentPos(r.alignment);
+      return '<div class="cf-row '+cls+'">'+
+        '<div class="cf-name"><b>'+esc(r.label||r.layer_key)+'</b><span>'+esc(r.detail||"")+'</span></div>'+
+        '<div class="cf-track"><i class="cf-mid"></i><i class="cf-dot" style="left:'+pos+'%"></i></div>'+
+        '<div class="cf-value">'+esc(directionalValue(r))+'</div>'+
+        '<div class="cf-status">'+esc(alignmentLabel(r.alignment))+'</div>'+
+      '</div>';
+    }).join("");
+
+  const rr=S.productRelated||[];
+  const ready=rr.filter(x=>x.availability_status==="READY");
+  const pending=rr.filter(x=>x.availability_status!=="READY");
+  const renderRel=x=>{
+    const cls=alignmentClass(x.alignment);
+    const when=x.related_ts_utc?brt(x.related_ts_utc):"sem release validado";
+    const stance=x.related_stance?uiTokenV2(x.related_stance):"SEM LEITURA";
+    return '<div class="rel-card '+cls+'"><div><b>'+esc(x.related_family)+'</b><span>'+esc(x.relation_label||"")+'</span></div>'+
+      '<div class="rel-meta">'+esc(when)+' · '+esc(stance)+'</div>'+
+      '<div class="rel-align">'+esc(alignmentLabel(x.alignment))+'</div></div>';
+  };
+  rel.innerHTML='<div class="cf-related-title">Eventos macro relacionados</div>'+
+    (rr.length?(ready.concat(pending).slice(0,3).map(renderRel).join("")):'<div class="muted">Nenhum relacionamento configurado.</div>')+
+    '<div class="ms">A ordem segue relevancia macro predefinida; evidencias contrarias nao sao ocultadas.</div>';
+}
+
+function sampleStatusLabel(x){
+  const m={VERY_SMALL_EXPLORATORY:"MUITO PEQUENA",INSUFFICIENT:"INSUFICIENTE",MISSING:"SEM DADOS",TRANSITION:"TRANSICAO",OK:"OK"};
+  return m[x]||x||"—";
+}
+function macro(){
+  const m=S.macro;
+  $("macroLast").innerHTML='<div class="kv"><div>Data</div><div>'+br(m.regime_date)+'</div><div>Dataset</div><div>'+bd(m.dataset_regime)+'</div>'+
+    '<div>Growth</div><div class="'+tone(m.growth_score)+'">'+sign(m.growth_score)+'</div><div>Inflation</div><div class="'+tone(m.inflation_score)+'">'+sign(m.inflation_score)+'</div>'+
+    '<div>Playbook</div><div>'+esc(pl(m.playbook))+'</div><div>Status</div><div>'+(m.playbook==="TRANSITION_OR_INSUFFICIENT"?'<span class="badge bwarn">TRANSICAO</span>':'<span class="badge bgood">REGIME FORTE</span>')+'</div></div>';
+  const p=$("qp");
+  if(m.playbook==="TRANSITION_OR_INSUFFICIENT")p.classList.add("hidden");
+  else{
+    p.style.left=Math.max(5,Math.min(95,50+Number(m.growth_score)*100))+"%";
+    p.style.top=Math.max(5,Math.min(95,50-Number(m.inflation_score)*100))+"%";
+    p.classList.remove("hidden");
+  }
+  const total=S.pb.reduce((a,x)=>a+Number(x.n||0),0)||1;
+  $("pbd").innerHTML=S.pb.map(x=>{
+    const pct=100*Number(x.n||0)/total;
+    return '<div class="dr"><div class="dr-main"><b>'+esc(pl(x.playbook))+'</b><div class="bar"><div class="fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>'+
+      '<div class="dr-pct">'+x.n+' · '+pct.toFixed(1)+'%</div>'+
+      '<div class="dr-status"><span class="badge '+(x.sample_status==="INSUFFICIENT"?"bwarn":"")+'">'+esc(sampleStatusLabel(x.sample_status))+'</span></div></div>';
+  }).join("");
+  $("macroRows").innerHTML=S.m.slice(0,300).map(x=>'<tr><td>'+br(x.regime_date)+'</td><td class="'+tone(x.growth_score)+'">'+sign(x.growth_score)+'</td>'+
+    '<td class="'+tone(x.inflation_score)+'">'+sign(x.inflation_score)+'</td><td>'+esc(pl(x.playbook))+'</td><td>'+bd(x.dataset_regime)+'</td></tr>').join("");
+}
+
 function renderLive(){
   const d=S.liveDash||{},rows=S.liveStatus||[],active=Number(d.active_assets||0);
   const hasErr=rows.some(x=>x.status==="ERROR");
@@ -145,6 +236,7 @@ function render(){
   renderProductIntelligence();
   renderMarketV2();
   renderPlaybookV1();
+  renderDirectionalGraph();
   renderConfluenceAnalysis();
   renderNasdaqV2();
   renderDossier();
