@@ -174,6 +174,28 @@ def clean_json(obj):
     return clean_json_value(obj)
 
 
+def parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    s = str(value).strip().lower()
+    if s in {"true", "1", "yes", "sim", "y"}:
+        return True
+    if s in {"false", "0", "no", "nao", "não", "n", ""}:
+        return False
+    return default
+
+
+def safe_int(value, default=0):
+    try:
+        if value is None or pd.isna(value):
+            return default
+        return int(float(value))
+    except Exception:
+        return default
+
+
 def write_local_status(payload):
     LOCAL_STATUS.parent.mkdir(parents=True, exist_ok=True)
     LOCAL_STATUS.write_text(
@@ -249,13 +271,13 @@ def semantic_payload(event_rec, row, meta):
         "event_ts_utc": event_iso(row.get("DT_EVENTO_UTC")),
         "family": row.get("FamiliaMacro") or event_rec.get("event_family"),
         "stance_bundle": row.get("StanceBundle"),
-        "conflito_semantico": bool(row.get("ConflitoSemantico")) if pd.notna(row.get("ConflitoSemantico")) else False,
+        "conflito_semantico": parse_bool(row.get("ConflitoSemantico"), False),
         "pressao_monetaria_z_mean": clean_json_value(row.get("PressaoMonetariaZ_Mean")),
         "pressao_dominante_z": clean_json_value(row.get("PressaoDominanteZ")),
-        "qtd_hawkish": int(row.get("QtdHawkish") or 0),
-        "qtd_dovish": int(row.get("QtdDovish") or 0),
-        "qtd_neutral": int(row.get("QtdNeutral") or 0),
-        "qtd_componentes_z_semanticos": int(row.get("QtdComponentesZSemanticos") or 0),
+        "qtd_hawkish": safe_int(row.get("QtdHawkish"), 0),
+        "qtd_dovish": safe_int(row.get("QtdDovish"), 0),
+        "qtd_neutral": safe_int(row.get("QtdNeutral"), 0),
+        "qtd_componentes_z_semanticos": safe_int(row.get("QtdComponentesZSemanticos"), 0),
         "mapping_complete": bool(sem.get("mapping_complete") is True),
         "unmapped_keys": list(sem.get("unmapped_keys") or []),
         "blocked_keys": list(sem.get("blocked_keys") or []),
