@@ -18,5 +18,6 @@ jobs:
           node --check cross-asset-core.js
           node --check event-monitor.js
       - name: Run confluence and post-event safeguards
-        run: node tests/confluence-v2.test.cjs
+        run: |
+          node tests/confluence-v2.test.cjs
           node tests/site-ui.test.cjs
