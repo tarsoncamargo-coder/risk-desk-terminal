@@ -122,8 +122,14 @@ echo   para alimentar NQ/ZQ/ZT/ZN.
 echo - DXY/VIX/VXN usam fonte best-effort com staleness guard.
 echo - Nao abra o antigo uploader GEN2 J10 em paralelo.
 echo.
-echo Para diagnostico compacto, execute:
-echo %DIAG%
+echo O diagnostico inicial sera executado automaticamente.
 echo ============================================================
+echo.
+echo Aguardando 25 segundos para os componentes publicarem...
+timeout /t 25 /nobreak >nul
+echo.
+"%PYTHON%" "%DIAG%"
+echo.
+echo Copie somente o bloco RESUMO PARA CHATGPT e envie no chat.
 echo.
 pause
