@@ -1,0 +1,190 @@
+/* Risk Desk V11 — refinamento visual incremental.
+   Camada CSS isolada: preserva DOM, seletores JS, dados e controles LIVE. */
+:root {
+  --bg: #080e15;
+  --panel: #101a25;
+  --line: #2a3948;
+  --text: #edf3f8;
+  --muted: #99aabc;
+  --cyan: #57c7dc;
+  --green: #55cb96;
+  --red: #f07884;
+  --amber: #eac078;
+  color-scheme: dark;
+}
+html { scrollbar-color: #34475b #0a1119; scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+  background: radial-gradient(ellipse 1100px 480px at 50% -220px, #17324470 0%, transparent 70%), var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.top {
+  height: 66px;
+  padding: 0 clamp(16px, 2.4vw, 34px);
+  background: #0b121aeF;
+  border-bottom-color: #2e4555;
+  box-shadow: 0 8px 28px #00000022;
+}
+.brand {
+  font-size: 15px;
+  letter-spacing: .105em;
+  line-height: 1.25;
+}
+.brand b { color: var(--cyan); }
+.actions { gap: 12px; }
+.actions .micro { font-variant-numeric: tabular-nums; }
+.btn,.sel {
+  border-radius: 8px;
+  border-color: #395067;
+  background: #15212e;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 12px;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.btn { font-weight: 750; }
+.btn:hover, .sel:hover { background: #1b2b3a; border-color: #5e8598; }
+button:focus-visible, select:focus-visible, a:focus-visible {
+  outline: 2px solid #80dcf0;
+  outline-offset: 3px;
+}
+nav {
+  top: 66px;
+  min-height: 52px;
+  align-items: center;
+  gap: 4px;
+  padding: 5px clamp(12px, 2.3vw, 33px);
+  background: #0c141dbf;
+  backdrop-filter: blur(12px);
+  scrollbar-width: thin;
+}
+nav button {
+  font-size: 12px;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 15px;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+nav button:hover { color: #eaf5ff; background: #172737; }
+nav button.on {
+  color: #d6f9ff;
+  background: #14313b;
+  border: 1px solid #386675;
+  box-shadow: inset 0 0 0 1px #55c5db17;
+}
+main {
+  max-width: 1580px;
+  padding: clamp(16px, 2.25vw, 30px);
+}
+.page > h1 {
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.25;
+  font-weight: 790;
+  letter-spacing: -.025em;
+  margin: 2px 0 5px;
+}
+.page > .sub { font-size: 13px; line-height: 1.6; margin-bottom: 20px; max-width: 960px; }
+.grid { gap: 16px; }
+.gap-top { margin-top: 16px; }
+.card {
+  padding: clamp(15px, 1.35vw, 21px);
+  background: linear-gradient(165deg, #15212b 0%, #101820 70%, #0e151d 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 5px 20px #0000001a;
+}
+.ct {
+  color: #a8b9c8;
+  font-size: 11px;
+  letter-spacing: .055em;
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+.mv { font-size: clamp(22px, 2.1vw, 29px); letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.ms, .micro { line-height: 1.55; }
+.badge { border-radius: 999px; padding: 4px 9px; letter-spacing: .035em; line-height: 1.35; }
+.product-events .card { min-height: 178px; position: relative; overflow: hidden; }
+.product-events .card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #5bcfe1, transparent 92%);
+  opacity: .65;
+}
+.desk-mode {
+  border-color: #345064;
+  background: linear-gradient(90deg, #13232d, #0e1720);
+  padding: 13px 15px;
+  border-radius: 10px;
+}
+.notice {
+  padding: 13px 15px;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+.confluence-card { border-color: #375367; }
+.analysis-card { border-color: #304754; }
+.warning-card { border-color: #6a573a; }
+.tbl {
+  border-radius: 9px;
+  border-color: #2e3d4d;
+  background: #0d1620;
+  scrollbar-width: thin;
+}
+.tbl th, .tbl td { padding: 11px 12px; }
+.tbl th {
+  color: #acbdcc;
+  background: #192735;
+  border-bottom-color: #394f60;
+  font-size: 10px;
+}
+.tbl tr:nth-child(even) { background: #ffffff03; }
+.tbl tr:hover { background: #1e30401a; }
+.kv { line-height: 1.5; }
+.filters { gap: 9px; margin-bottom: 14px; }
+.filters .sel { max-width: 100%; min-height: 37px; }
+.quad { border-radius: 9px; overflow: hidden; }
+.sbox { border-radius: 9px; background: #101c26; }
+.rv-stage, .rv-pre-step, .rv-preview, .rv-mode-summary, .rv-source-alert { border-radius: 9px; }
+.timeline .tl-step { border-radius: 9px; }
+.drawer { background: #0d151e; box-shadow: -18px 0 45px #00000072; }
+.dh { background: #12202c; }
+.foot { max-width: 1580px; padding: 19px clamp(16px, 2.25vw, 30px) 28px; font-size: 11px; line-height: 1.5; }
+#v11Calendar .v11-metric { border-radius: 9px; background: #101e28; }
+#v11Calendar .v11-dataset-note { border-radius: 6px; }
+@media(max-width: 1100px) {
+  .grid { gap: 13px; }
+  .gap-top { margin-top: 13px; }
+}
+@media(max-width: 760px) {
+  .top { height: 64px; }
+  nav { top: 64px; }
+  .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g2 { grid-template-columns: minmax(0,1fr); }
+  .product-events .card { min-height: 140px; }
+  main { padding: 17px 13px; }
+  .card { padding: 16px; }
+  .actions .micro { display: none; }
+  .foot { flex-direction: column; }
+}
+@media(max-width: 520px) {
+  .top { gap: 7px; padding: 0 12px; }
+  .brand { font-size: 12px; letter-spacing: .055em; }
+  .actions { gap: 5px; }
+  .actions .btn { padding: 8px; font-size: 11px; }
+  nav { padding: 5px 10px; gap: 2px; }
+  nav button { font-size: 11px; padding: 9px 11px; }
+  .g3, .g4 { grid-template-columns: minmax(0, 1fr); }
+  #v11Calendar .v11-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .product-events .card { min-height: 0; }
+  .kv { grid-template-columns: 105px minmax(0,1fr); }
+  .market-kv { grid-template-columns: 90px minmax(0,1fr); }
+  .filters .sel { flex: 1 1 150px; }
+}
+@media(prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn, .sel, nav button { transition: none; }
+}
