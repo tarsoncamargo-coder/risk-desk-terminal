@@ -13,6 +13,7 @@ echo.
 set "J11DIR=%~dp0"
 set "BUILDER=%J11DIR%riskdesk_gen2_feature_builder_j11.py"
 set "PUBLISHER=%J11DIR%riskdesk_gen2_shadow_j12_publisher.py"
+set "ENGINE=%USERPROFILE%\Documents\NinjaTrader 8\LaranjinhaML\HistoricoML_V7\NASDAQ_GEN2_SHADOW_V10_0_0J10_FINAL\RiskDesk_Nasdaq_GEN2_Shadow_Inference.py"
 
 if not exist "%BUILDER%" (
     echo [ERRO] Builder J11 nao encontrado:
@@ -25,6 +26,14 @@ if not exist "%BUILDER%" (
 if not exist "%PUBLISHER%" (
     echo [ERRO] Publisher J12 nao encontrado:
     echo %PUBLISHER%
+    echo.
+    pause
+    exit /b 1
+)
+
+if not exist "%ENGINE%" (
+    echo [ERRO] Engine congelado J10 nao encontrado:
+    echo %ENGINE%
     echo.
     pause
     exit /b 1
@@ -59,6 +68,45 @@ echo %BUILDER%
 echo.
 echo Publisher:
 echo %PUBLISHER%
+echo.
+echo Engine J10:
+echo %ENGINE%
+echo.
+
+if "%RISKDESK_SUPABASE_URL%"=="" (
+    echo [ERRO] RISKDESK_SUPABASE_URL nao esta definida nesta sessao.
+    echo.
+    pause
+    exit /b 1
+)
+
+if "%RISKDESK_SUPABASE_SECRET_KEY%"=="" (
+    echo [ERRO] RISKDESK_SUPABASE_SECRET_KEY nao esta definida nesta sessao.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Validando sintaxe...
+"%PYTHON%" -m py_compile "%BUILDER%" "%PUBLISHER%"
+if errorlevel 1 (
+    echo.
+    echo [ERRO] Falha na validacao de sintaxe.
+    pause
+    exit /b 1
+)
+
+echo Validando dependencias...
+"%PYTHON%" -c "import pandas,numpy,supabase,joblib,sklearn; print('Dependencias OK | sklearn', sklearn.__version__)"
+if errorlevel 1 (
+    echo.
+    echo [ERRO] Dependencia Python ausente.
+    pause
+    exit /b 1
+)
+
+echo.
+echo Preflight OK.
 echo.
 
 echo Abrindo J11 Feature Builder...
