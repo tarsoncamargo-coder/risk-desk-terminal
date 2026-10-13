@@ -61,7 +61,11 @@ select
     else 'LEITURA_DISPONIVEL'
   end as product_status,
   'UNDETERMINED'::text as event_semantic_alignment,
-  false::boolean as operational_authorized
+  false::boolean as operational_authorized,
+  m.vix_raw_pct,
+  m.vxn_raw_pct,
+  m.vix_reading,
+  m.vxn_reading
 from public.riskdesk_live_market_state_latest_v1 m
 join target t on t.event_id = m.event_id
 order by
