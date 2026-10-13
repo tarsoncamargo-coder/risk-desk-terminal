@@ -45,6 +45,7 @@ ROOT = LARANJINHA / "HistoricoML_V7"
 PACKAGE = ROOT / "NASDAQ_GEN2_SHADOW_V10_0_0J10_FINAL"
 ENGINE = PACKAGE / "RiskDesk_Nasdaq_GEN2_Shadow_Inference.py"
 
+GEN1_LIVE = LARANJINHA / "RiskDesk_Nasdaq_GEN1_V13_Live.csv"
 PRIMARY = LARANJINHA / "RiskDesk_Nasdaq_GEN1_POST5_FEATURES_Live.csv"
 ENRICH = LARANJINHA / "RiskDesk_Nasdaq_GEN2_Live_Enrichment.csv"
 J11_STATUS = LARANJINHA / "RiskDesk_GEN2_FeatureBuilder_Status_J11.json"
@@ -204,9 +205,9 @@ def write_local_status(payload):
     )
 
 
-def heartbeat(client, status, details):
+def heartbeat(client, status, details, component=COMPONENT):
     body = {
-        "component": COMPONENT,
+        "component": component,
         "last_seen_utc": now_iso(),
         "status": status,
         "details": clean_json(details),
@@ -254,6 +255,160 @@ def resolve_event_id(client, event_ts_utc, family):
         return matched[0], None
 
     return None, "AMBIGUOUS_SUPABASE_EVENT_AT_TIMESTAMP"
+
+
+def first_value(row, *names):
+    for name in names:
+        if name in row:
+            value = row.get(name)
+            try:
+                if pd.notna(value):
+                    return value
+            except Exception:
+                if value is not None:
+                    return value
+    return None
+
+
+def safe_float(value):
+    try:
+        if value is None or pd.isna(value):
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def publish_gen1_context(client):
+    component = "GEN1_CONTEXT"
+    if not GEN1_LIVE.exists():
+        info = {"state": "WAITING_GEN1_LIVE_FILE", "file": str(GEN1_LIVE)}
+        heartbeat(client, "WARMUP", info, component=component)
+        return info
+
+    try:
+        df = pd.read_csv(GEN1_LIVE, low_memory=False)
+    except Exception as exc:
+        info = {"state": "GEN1_FILE_READ_ERROR", "error": type(exc).__name__, "message": str(exc)[:500]}
+        heartbeat(client, "ERROR", info, component=component)
+        return info
+
+    if df.empty or "DT_EVENTO_UTC" not in df.columns or "MODE" not in df.columns:
+        info = {"state": "WAITING_GEN1_EXACT_SCHEMA", "columns": list(df.columns)}
+        heartbeat(client, "WARMUP", info, component=component)
+        return info
+
+    dt = pd.to_datetime(df["DT_EVENTO_UTC"], errors="coerce", utc=True)
+    work = df.loc[dt.notna()].copy()
+    work["_dt"] = dt[dt.notna()]
+    work = work[work["MODE"].astype(str).str.upper().isin(["PRE_EVENT", "POST_5M"])]
+
+    now = pd.Timestamp.now(tz="UTC")
+    work = work[(work["_dt"] >= now - pd.Timedelta(hours=12)) & (work["_dt"] <= now + pd.Timedelta(hours=72))]
+    if work.empty:
+        info = {"state": "NO_CURRENT_GEN1_EVENT_CONTEXT", "published_now": 0}
+        heartbeat(client, "WARMUP", info, component=component)
+        return info
+
+    meta_version = None
+    meta_state = None
+    meta_updated = None
+    for col, target in [("SERVICE_VERSION", "version"), ("SERVICE_STATE", "state"), ("UPDATED_AT", "updated")]:
+        if col in df.columns:
+            vals = df[col].dropna()
+            if len(vals):
+                val = vals.iloc[-1]
+                if target == "version":
+                    meta_version = str(val)
+                elif target == "state":
+                    meta_state = str(val)
+                else:
+                    meta_updated = val
+
+    published = 0
+    skipped = 0
+    errors = []
+
+    for _, sr in work.sort_values("_dt").iterrows():
+        row = sr.drop(labels=["_dt"]).to_dict()
+        event_rec, event_err = resolve_event_id(
+            client,
+            row.get("DT_EVENTO_UTC"),
+            first_value(row, "FamiliaMacro", "EventFamily", "PacoteEvento"),
+        )
+        if event_rec is None:
+            skipped += 1
+            errors.append(event_err)
+            continue
+
+        mode = str(row.get("MODE") or "").strip().upper()
+        service_version = str(first_value(row, "SERVICE_VERSION") or meta_version or "GEN1_LIVE_UNKNOWN")
+
+        existing = (
+            client.table("gen1_event_context_history")
+            .select("gen1_context_id")
+            .eq("event_id", event_rec["event_id"])
+            .eq("mode", mode)
+            .eq("service_version", service_version)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            skipped += 1
+            continue
+
+        source_updated = first_value(row, "UPDATED_AT", "FrozenAt") or meta_updated
+        source_updated_iso = None
+        if source_updated is not None:
+            try:
+                source_updated_iso = parse_utc(source_updated).isoformat()
+            except Exception:
+                source_updated_iso = None
+
+        body = {
+            "event_id": event_rec["event_id"],
+            "event_ts_utc": event_iso(row.get("DT_EVENTO_UTC")),
+            "mode": mode,
+            "event_key": first_value(row, "EventKey"),
+            "event_package": first_value(row, "PacoteEvento"),
+            "service_version": service_version,
+            "service_state": str(first_value(row, "SERVICE_STATE") or meta_state or "UNKNOWN"),
+            "source_updated_at": source_updated_iso,
+            "range_5_pts": safe_float(first_value(row, "RANGE_5_PTS")),
+            "range_15_pts": safe_float(first_value(row, "RANGE_15_PTS")),
+            "range_30_pts": safe_float(first_value(row, "RANGE_30_PTS")),
+            "range_60_pts": safe_float(first_value(row, "RANGE_60_PTS")),
+            "move_5_bps": safe_float(first_value(row, "Move5_bps", "MOVE_5_BPS", "POST_MOVE5_BPS")),
+            "direction_5": safe_int(first_value(row, "Direcao5", "DIRECAO_5", "POST_DIRECAO5"), 0) or None,
+            "mfe_15_pts": safe_float(first_value(row, "MFE_15_PTS")),
+            "mfe_30_pts": safe_float(first_value(row, "MFE_30_PTS")),
+            "mfe_60_pts": safe_float(first_value(row, "MFE_60_PTS")),
+            "mae_15_pts": safe_float(first_value(row, "MAE_15_PTS")),
+            "mae_30_pts": safe_float(first_value(row, "MAE_30_PTS")),
+            "mae_60_pts": safe_float(first_value(row, "MAE_60_PTS")),
+            "pb50_prob": safe_float(first_value(row, "PB50_PROB")),
+            "pb70_prob": safe_float(first_value(row, "PB70_PROB")),
+            "rev100_prob": safe_float(first_value(row, "REV100_PROB")),
+            "pb50_pb70_conflict": parse_bool(first_value(row, "PB50_PB70_CONFLITO"), False),
+            "surprise_z_count": safe_int(first_value(row, "SURPRISE_Z_COUNT"), 0),
+            "context_only": True,
+            "operational_authorized": False,
+            "payload": clean_json(row),
+        }
+
+        client.table("gen1_event_context_history").insert(body).execute()
+        published += 1
+
+    status = "OK" if published > 0 else "WARMUP"
+    info = {
+        "state": "GEN1_CONTEXT_READY" if published > 0 else "GEN1_CONTEXT_NO_NEW_ROWS",
+        "published_now": published,
+        "skipped": skipped,
+        "errors": sorted(set(x for x in errors if x))[:10],
+        "source_file": str(GEN1_LIVE),
+    }
+    heartbeat(client, status, info, component=component)
+    return info
 
 
 def data_quality_from_j11(meta):
@@ -363,6 +518,7 @@ def insert_prediction_once(client, event_rec, row, pred, meta, required):
 
 
 def cycle(client, engine):
+    gen1_info = publish_gen1_context(client)
     row, enrich, merge_err = merge_inputs()
     if row is None:
         state = {
@@ -372,6 +528,7 @@ def cycle(client, engine):
             "trade_signal": False,
             "entry_filter": False,
             "operational_authorized": False,
+            "gen1_context": gen1_info,
         }
         heartbeat(client, "WARMUP", state)
         write_local_status(state)
