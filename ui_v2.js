@@ -77,6 +77,53 @@ function playbookHtml(){
     '<div class="kv mini-kv gap-top"><div>Growth</div><div>'+sign(p.growth_score,3)+'</div><div>Inflation</div><div>'+sign(p.inflation_score,3)+'</div></div>';
 }
 
+function renderPlaybookV1(){
+  const p=S.productPlaybook;
+  if(!p){$("playbookToday").innerHTML='<div class="mv muted" style="font-size:17px">Playbook indisponivel</div><div class="ms">Aguardando contexto macro validado.</div>';return}
+  const code=p.playbook_code||"TRANSITION_OR_INSUFFICIENT";
+  const cls=code==="GOLDILOCKS"||code==="REFLATION"?"pos":code==="STAGFLATION"||code==="DISINFLATIONARY_RISK_OFF"?"neg":"warn";
+  $("playbookToday").innerHTML='<div class="mv '+cls+'">'+esc(uiTokenV2(code))+'</div>'+
+    '<div class="ms">Estado: '+esc(uiTokenV2(p.playbook_status||"—"))+' · '+(p.carry_forward?"carry-forward validado":"live")+'</div>'+
+    '<div class="kv mini-kv gap-top"><div>Growth</div><div>'+sign(p.growth_score,3)+' <span class="micro">'+esc(p.growth_status||"—")+'</span></div>'+
+    '<div>Inflation</div><div>'+sign(p.inflation_score,3)+' <span class="micro">'+esc(p.inflation_status||"—")+'</span></div>'+
+    '<div>Freshness</div><div>'+esc(p.freshness_days==null?"—":p.freshness_days+" dias")+'</div>'+
+    '<div>Inputs live</div><div>'+(p.live_inputs_complete?"COMPLETOS":"INCOMPLETOS")+'</div></div>'+
+    '<div class="ms">Regime estrutural. Nao muda por um unico evento e nao autoriza operacao.</div>';
+}
+
+function renderMarketV2(){
+  const a=S.productMarketV2||[];
+  let r=null;
+  if(S.productCurrent){
+    r=a.find(x=>x.window==="LIVE"&&x.product_status==="LEITURA_DISPONIVEL")||
+      a.find(x=>x.product_status==="LEITURA_DISPONIVEL")||a.find(x=>x.window==="LIVE")||a[0];
+  }else{
+    r=a.find(x=>x.window==="PRE60")||a.find(x=>x.window==="PRE30")||a[0];
+  }
+  if(!r){
+    $("marketV2Today").innerHTML='<div class="mv muted" style="font-size:17px">Sem Market State V2 disponivel</div><div class="ms">Aguardando contexto live do proximo evento.</div>';
+    $("dossierMarketV2").innerHTML='<tr><td colspan="9" class="muted">Sem leituras V2.</td></tr>';
+    return;
+  }
+  const state=r.market_state_v2||"UNAVAILABLE";
+  const cls=state==="RISK_ON"?"pos":state==="RISK_OFF"?"neg":["MIXED","STALE","WAITING"].includes(state)?"warn":"";
+  $("marketV2Today").innerHTML='<div class="mv '+cls+'">'+esc(uiTokenV2(state))+'</div>'+
+    '<div class="ms">'+esc(r.window)+' · '+esc(uiTokenV2(r.product_status||"—"))+' · '+esc(r.event_role||"—")+'</div>'+
+    '<div class="kv market-kv gap-top"><div>NQ</div><div>'+sign(r.nq_raw_pct,4)+'</div><div>DXY</div><div>'+sign(r.dxy_raw_pct,4)+'</div>'+
+    '<div>2Y</div><div>'+esc(uiTokenV2(r.rates_2y_reading||"UNAVAILABLE"))+'</div><div>10Y</div><div>'+esc(uiTokenV2(r.rates_10y_reading||"UNAVAILABLE"))+'</div>'+
+    '<div>Risco</div><div>'+esc(uiTokenV2(r.risk_reading||"UNAVAILABLE"))+'</div><div>Sigma</div><div>'+esc(uiTokenV2(r.sigma_reading||"UNAVAILABLE"))+'</div></div>'+
+    '<div class="ms">Alinhamento com a semantica do evento: INDETERMINADO. Nenhum score novo foi criado.</div>';
+  const order={LIVE:0,PRE5:1,PRE15:2,PRE30:3,PRE60:4,PRE240:5,PRE1440:6};
+  const rows=[...a].sort((x,y)=>(order[x.window]??99)-(order[y.window]??99));
+  $("dossierMarketV2").innerHTML=rows.length?rows.map(x=>{
+    const st=x.market_state_v2||"UNAVAILABLE";
+    const tc=st==="RISK_ON"?"pos":st==="RISK_OFF"?"neg":["WAITING","STALE","MIXED"].includes(st)?"warn":"";
+    return '<tr><td><b>'+esc(x.window)+'</b></td><td class="'+tc+'">'+esc(uiTokenV2(st))+'</td><td>'+sign(x.nq_raw_pct,4)+'</td><td>'+sign(x.dxy_raw_pct,4)+'</td>'+
+      '<td>'+esc(uiTokenV2(x.rates_2y_reading||"UNAVAILABLE"))+'</td><td>'+esc(uiTokenV2(x.rates_10y_reading||"UNAVAILABLE"))+'</td>'+
+      '<td>'+esc(uiTokenV2(x.risk_reading||"UNAVAILABLE"))+'</td><td>'+esc(uiTokenV2(x.sigma_reading||"UNAVAILABLE"))+'</td><td>'+esc(uiTokenV2(x.product_status||"—"))+'</td></tr>';
+  }).join(""):'<tr><td colspan="9" class="muted">Sem leituras V2.</td></tr>';
+}
+
 function renderLive(){
   const d=S.liveDash||{},rows=S.liveStatus||[],active=Number(d.active_assets||0);
   const hasErr=rows.some(x=>x.status==="ERROR");
