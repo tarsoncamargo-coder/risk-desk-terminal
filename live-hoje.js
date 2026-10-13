@@ -179,6 +179,10 @@
         errors[q[0]] = String(outcomes[i].reason && outcomes[i].reason.message || outcomes[i].reason);
       }
     });
+    if (!errors.quotes && Array.isArray(current.quotes)) {
+      window.riskDeskQuoteFeed = current.quotes;
+      if (typeof renderDirectionalGraph === "function") renderDirectionalGraph();
+    }
     renderQuotes(); renderMarket(); renderEvent();
     if (el("rdLastQuery")) el("rdLastQuery").textContent = "Consulta ao Supabase: " + new Date().toLocaleTimeString("pt-BR");
   }
