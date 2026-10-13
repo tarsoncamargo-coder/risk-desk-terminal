@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from supabase import create_client
 
-VERSION = "V10.0.0-LIVE-DIAG-V2"
+VERSION = "V10.0.0-LIVE-DIAG-V2.1"
 ASSETS = ("NQ","ZQ","ZT","ZN","DXY","VIX","VXN")
 COMPONENTS = (
     "NINJATRADER_BRIDGE",
@@ -21,6 +21,19 @@ COMPONENTS = (
     "GEN1_CONTEXT",
     "GEN2_SHADOW",
 )
+
+
+def classify_asset_status(asset, age_min, quality_status):
+    q=str(quality_status or "").upper()
+    if q=="DELAYED_SOURCE":
+        return "DELAYED"
+    if q=="OFF_SESSION_SOURCE":
+        return "OFF_SESSION"
+    if age_min <= 20:
+        return "FRESH"
+    if asset=="ZQ" and age_min <= 120:
+        return "SPARSE_NOT_FRESH"
+    return "STALE"
 
 
 def parse_dt(v):
@@ -49,7 +62,7 @@ def main():
         r=rows[0]
         age=(now-parse_dt(r["ts_utc"])).total_seconds()/60.0
         assets[asset]={
-            "status":"FRESH" if age<=20 else "STALE",
+            "status":classify_asset_status(asset, max(0,age), r.get("quality_status")),
             "age_min":round(max(0,age),1),
             "source":r.get("source"),
             "quality":r.get("quality_status"),
