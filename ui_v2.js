@@ -215,6 +215,24 @@ function macro(){
     '<td class="'+tone(x.inflation_score)+'">'+sign(x.inflation_score)+'</td><td>'+esc(pl(x.playbook))+'</td><td>'+bd(x.dataset_regime)+'</td></tr>').join("");
 }
 
+
+function analysisHtml(a){
+  if(!a)return'<div class="muted">Aguardando contexto suficiente.</div>';
+  const cross=a.cross_asset_reason?'<div>'+esc(a.cross_asset_reason)+'</div>':'';
+  const related=a.related_event_reason?'<div>'+esc(a.related_event_reason)+'</div>':'';
+  return '<div class="analysis-summary">'+esc(a.summary||"—")+'</div>'+
+    '<div class="analysis-lines">'+
+      '<div>'+esc(a.macro_reason||"")+'</div>'+
+      '<div>'+esc(a.market_reason||"")+'</div>'+
+      '<div>'+esc(a.playbook_reason||"")+'</div>'+
+      cross+related+
+      '<div>'+esc(a.historical_reason||"")+'</div>'+
+      '<div>'+esc(a.model_reason||"")+'</div>'+
+    '</div>'+
+    '<div class="analysis-risk">'+esc(a.main_risk||"")+'</div>'+
+    '<div class="ms">Qualidade: '+esc(uiTokenV2(a.quality_warning||"—"))+' · Probabilidade de lucro: NAO · Sinal operacional: NAO</div>';
+}
+
 function renderLive(){
   const d=S.liveDash||{},rows=S.liveStatus||[],active=Number(d.active_assets||0);
   const hasErr=rows.some(x=>x.status==="ERROR");
