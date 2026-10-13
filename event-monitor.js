@@ -94,6 +94,8 @@
     if(gate)gate.textContent=mode.mode==="POST_CONFIRMATION"?
       "Evidências pós-evento presentes. Verifique fonte, janela e freshness de cada linha antes de interpretar o alinhamento.":
       "Mapa do evento: aguardando evidências direcionais pós-release; leituras LIVE antes do CPI não confirmam a surpresa.";
+    var original=el("directionalGraph");
+    if(original)original.classList.toggle("rv-hide-unconfirmed",mode.mode==="WAIT_POST_MARKET");
     if(automatic&&(lastPhaseKey!==phaseKey||tab!==mode.tab))switchGraph(mode.tab);
     lastPhaseKey=phaseKey;
   }
