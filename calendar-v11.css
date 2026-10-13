@@ -1,0 +1,14 @@
+/* Risk Desk V11 — cartao de auditoria historica offline.
+   Apenas apresentacao; nao consulta LIVE, nao valida ML e nao altera app.js. */
+#v11Calendar .v11-intro { margin: 9px 0 14px; color: var(--muted); line-height: 1.55; }
+#v11Calendar .v11-statuses { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 12px; }
+#v11Calendar .v11-metrics { margin-top: 10px; }
+#v11Calendar .v11-metric { border: 1px solid var(--line); background: #0c131a; border-radius: 6px; padding: 13px; min-width: 0; }
+#v11Calendar .v11-metric strong { display: block; font-size: clamp(21px, 2.5vw, 28px); font-variant-numeric: tabular-nums; }
+#v11Calendar .v11-metric span { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.4; }
+#v11Calendar .v11-limits { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+#v11Calendar .v11-limits li { border-left: 3px solid var(--amber); padding: 8px 10px; background: #1a1813; color: var(--text); line-height: 1.5; }
+#v11Calendar .v11-limits b { display: block; }
+#v11Calendar .v11-provenance { padding-top: 12px; margin-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; overflow-wrap: anywhere; line-height: 1.6; }
+#v11Calendar .v11-dataset-note { margin-top: 12px; padding: 10px 12px; background: #111c23; border-left: 3px solid var(--cyan); line-height: 1.5; }
+@media (max-width: 720px) { #v11Calendar .v11-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
