@@ -176,17 +176,58 @@
         '</div><p class="rd-footnote">Monitoramento somente leitura. Ausência de registro não deve ser preenchida por dados históricos ou probabilidades de lucro.</p>';
     }
   }
+  function renderPreWindows(data){
+    var box=el("rdPreWindows");
+    if(!box)return;
+    var names=["PRE1440","PRE240","PRE60","PRE30","PRE15","PRE5"];
+    var windows=data.windows||[];
+    box.innerHTML='<div class="rv-pre-title">Snapshots pré-evento (não são previsões)</div>'+
+      '<div class="rv-pre-steps">'+names.map(function(name){
+        var w=windows.find(function(x){return x.window===name;});
+        var valid=w&&w.product_status==="LEITURA_DISPONIVEL"&&!!w.as_of_utc;
+        return '<div class="rv-pre-step"><b>'+name+'</b><span class="'+(valid?"rv-state-ready":"rv-state-wait")+'">'+
+          escText(valid?"DISPONÍVEL":w?(w.product_status||"AGUARDANDO"):"SEM SNAPSHOT")+
+          '</span></div>';
+      }).join("")+'</div><p class="rd-footnote">PRE1440 → PRE5 seguem as janelas oficiais do Market State. Disponível significa snapshot publicado, não reação confirmada.</p>';
+  }
+  function renderSourceGate(data,errors){
+    var box=el("rdSourceGate");
+    if(!box)return;
+    var h=data.heartbeat||[],event=h.find(function(x){return x.component==="EVENT_ENGINE";});
+    var g1=h.find(function(x){return x.component==="GEN1_CONTEXT";});
+    var g2=h.find(function(x){return x.component==="GEN2_SHADOW";});
+    function fmt(x){
+      if(!x)return "Sem heartbeat";
+      var time=x.last_seen_utc?minutes(x.last_seen_utc):null;
+      var a=time===null?"horário desconhecido":Math.max(0,time).toFixed(1)+" min";
+      return (x.status||"UNKNOWN")+" · "+a;
+    }
+    var mode=event&&event.details&&event.details.bls_actual_mode;
+    var restricted=/UNREGISTERED|LIMITED|NO_SOURCE|PENDING/.test(mode||"");
+    var target=(data.current||[])[0]||(data.next||[])[0]||null;
+    box.innerHTML='<div class="rv-diagnostics">'+
+      '<div>Aquisição de Actual BLS <b>'+escText(mode||"Não informado")+'</b></div>'+
+      '<div>Fonte oficial <b>'+escText(fmt(event))+'</b></div>'+
+      '<div>Consenso do próximo release <b>'+escText(target&&target.consensus_source?target.consensus_source:"AINDA NÃO VALIDADO")+'</b></div>'+
+      '<div>Publicador GEN1 <b>'+escText(fmt(g1))+'</b></div>'+
+      '<div>Publicador GEN2 SHADOW <b>'+escText(fmt(g2))+'</b></div></div>'+
+      (restricted?'<p class="rv-source-alert">Bloqueador: o coletor informa modo limitado para resultados oficiais. A agenda OK não prova que Actual/consenso chegarão após o release. É necessário validar a fonte de divulgação antes de homologar J11/J12.</p>':
+      '<p class="rd-footnote">Heartbeats recentes não comprovam publicação prospectiva, mesmo quando os processos estão OK.</p>')+
+      (errors&&errors.length?'<p class="rv-source-alert">Falha nas consultas: '+escText(errors.join(", "))+'</p>':"");
+  }
   async function refresh(){
     var id=++seq;
     var req=[
       ["market","riskdesk_product_directional_matrix_v1","select=layer_key,label,raw_value,value_unit,observed_direction,alignment,product_status,market_window,detail&order=sort_order.asc"],
-      ["quotes","riskdesk_live_latest_quotes_v1","select=asset,ts_utc,quality_status"],
+      ["quotes","riskdesk_live_latest_quotes_v1","select=asset,symbol,source,ts_utc,received_at,quality_status"],
       ["current","riskdesk_product_current_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
       ["next","riskdesk_product_next_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
-      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,mapping_complete,prospective_fresh,updated_at"],
+      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,stance_bundle,mapping_complete,prospective_fresh,updated_at"],
       ["gen1","riskdesk_product_current_gen1_v1","select=event_id,mode,service_state,source_updated_at,range_15_pts,range_30_pts,range_60_pts"],
       ["gen2","riskdesk_product_current_gen2_shadow_v1","select=event_id,prospective_fresh,feature_schema_complete,shadow_only,p_up_isotonic,stage,prediction_ts_utc"],
-      ["health","riskdesk_product_system_health_v1","select=component,status,age_minutes"]
+      ["health","riskdesk_product_system_health_v1","select=component,status,age_minutes"],
+      ["windows","riskdesk_product_market_state_v2_v1","select=event_id,window,product_status,window_status,as_of_utc&order=as_of_utc.desc"],
+      ["heartbeat","live_pipeline_heartbeat","select=component,status,last_seen_utc,details&component=in.(EVENT_ENGINE,GEN1_CONTEXT,GEN2_SHADOW)"]
     ];
     var out=await Promise.allSettled(req.map(function(x){return api(x[1],x[2]);}));
     if(id!==seq)return;
@@ -196,6 +237,14 @@
     liveRows=out[0].status==="fulfilled"?data.market:null;
     quotes=out[1].status==="fulfilled"?data.quotes:[];
     renderMarketNow();
+    var failures=req.filter(function(x,i){return out[i].status==="rejected";}).map(function(x){return x[0];});
+    renderPreWindows(data);
+    renderSourceGate(data,failures);
+    if (out[2].status!=="rejected" && out[3].status!=="rejected") updateMode(data);
+    else {
+      var summary=el("rdModeSummary");
+      if(summary)summary.textContent="Estado do evento indisponível · consulta de evento falhou";
+    }
     if (out[2].status==="rejected" || out[3].status==="rejected") {
       ["rdPostFlow","rdPostDiagnostics"].forEach(function(key){
         var node=el(key);
@@ -203,13 +252,12 @@
       });
     } else {
       renderPost(data);
-      var failures=req.filter(function(x,i){return i>=4&&out[i].status==="rejected";})
-        .map(function(x){return x[0];});
-      if(failures.length) {
+      var blocked=failures.filter(function(x){return ["semantic","gen1","gen2","health","windows"].includes(x);});
+      if(blocked.length) {
         ["rdPostFlow","rdPostDiagnostics"].forEach(function(key) {
           var node=el(key);
           if(node)node.insertAdjacentHTML("afterbegin",
-            '<p class="rd-footnote rv-query-warning">Consulta indisponível: '+escText(failures.join(", "))+
+            '<p class="rd-footnote rv-query-warning">Consulta indisponível: '+escText(blocked.join(", "))+
             '. Sem confirmação das fases afetadas.</p>');
         });
       }
