@@ -85,7 +85,7 @@
     var sem=data.semantic && data.semantic.event_id===e.event_id &&
       data.semantic.mapping_complete===true && data.semantic.prospective_fresh===true && !!data.semantic.updated_at && new Date(data.semantic.updated_at).getTime()>=t0;
     var g1=(data.gen1||[]).find(function(g) {
-      return g.event_id===e.event_id && g.mode==="POST_5M" && g.service_state!=="ERROR" && !!g.source_updated_at && new Date(g.source_updated_at).getTime()>=t0+5*60000;
+      return g.event_id===e.event_id && g.mode==="POST_5M" && !/(ERROR|WAITING|WARMUP|INSUFFICIENT|STALE)/i.test(g.service_state||"") && !!g.source_updated_at && new Date(g.source_updated_at).getTime()>=t0+5*60000;
     })||null;
     var g2=data.gen2 && data.gen2.event_id===e.event_id &&
       data.gen2.prospective_fresh===true && data.gen2.feature_schema_complete===true &&
