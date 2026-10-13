@@ -34,7 +34,7 @@ except ImportError:
     print("Falta o pacote supabase. Execute: C:\\Python314\\python.exe -m pip install supabase")
     raise
 
-VERSION = "V10.0.0J12-PREP-PUBLISHER"
+VERSION = "V10.0.0J12-PREP-PUBLISHER-B"
 COMPONENT = "GEN2_SHADOW"
 POLL_SECONDS = 30
 
