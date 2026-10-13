@@ -20,9 +20,10 @@ from zoneinfo import ZoneInfo
 
 from supabase import create_client
 
-VERSION = "V10.0.0J7B_FREE_FIX2"
+VERSION = "V10.0.0J7B_FREE_FIX3"
 POLL_SECONDS = 60
 FRESH_MINUTES = {"DXY": 20, "VIX": 20, "VXN": 20}
+MAX_TRANSPORT_LAG_MINUTES = {"DXY": 3, "VIX": 3, "VXN": 3}
 SYMBOLS = {
     "DXY": {"symbol": "DX-Y.NYB", "source": "YAHOO_DXY", "component": "DXY_ADAPTER"},
     "VIX": {"symbol": "^VIX", "source": "YAHOO_VIX", "component": "VIX_ADAPTER"},
@@ -120,6 +121,16 @@ def fetch_latest_yahoo(symbol):
     return None, " | ".join(errors[-4:])
 
 
+def classify_quote_state(expected_session, age_minutes, freshness_limit_minutes, transport_lag_minutes, max_transport_lag_minutes):
+    if not expected_session:
+        return "STALE", "OUTSIDE_EXPECTED_SESSION", "OFF_SESSION_SOURCE"
+    if transport_lag_minutes is not None and transport_lag_minutes > max_transport_lag_minutes:
+        return "STALE", "DELAYED_SOURCE", "DELAYED_SOURCE"
+    if age_minutes is not None and age_minutes <= freshness_limit_minutes:
+        return "OK", "FRESH", "OK"
+    return "ERROR", "STALE_DURING_EXPECTED_SESSION", "STALE_SOURCE"
+
+
 def latest_persisted(client, asset):
     res = (
         client.table("live_market_minute")
@@ -175,29 +186,39 @@ def run_asset(client, asset, cfg):
     latest_px = None
     source_mode = "FETCH"
 
+    transport_lag_min = None
     if fetched is not None:
         latest_ts, latest_px = fetched
         age_min = max(0.0, (now - latest_ts).total_seconds() / 60.0)
-        fresh = age_min <= FRESH_MINUTES[asset]
-        quality = "OK" if fresh else "STALE_SOURCE"
+        transport_lag_min = age_min
+        status, state, quality = classify_quote_state(
+            expected,
+            age_min,
+            FRESH_MINUTES[asset],
+            transport_lag_min,
+            MAX_TRANSPORT_LAG_MINUTES[asset],
+        )
         persist_quote(client, asset, cfg, latest_ts, latest_px, quality)
     else:
         persisted = latest_persisted(client, asset)
         source_mode = "PERSISTED_FALLBACK"
         if persisted:
-            latest_ts, latest_px, _, _ = persisted
+            latest_ts, latest_px, _, persisted_quality = persisted
+        else:
+            persisted_quality = None
         age_min = None if latest_ts is None else max(0.0, (now - latest_ts).total_seconds() / 60.0)
-        fresh = age_min is not None and age_min <= FRESH_MINUTES[asset]
-
-    if fresh:
-        status = "OK"
-        state = "FRESH"
-    elif expected:
-        status = "ERROR"
-        state = "STALE_DURING_EXPECTED_SESSION" if latest_ts else "NO_VALID_QUOTE_DURING_EXPECTED_SESSION"
-    else:
-        status = "STALE"
-        state = "OUTSIDE_EXPECTED_SESSION"
+        if latest_ts is None:
+            status = "ERROR" if expected else "STALE"
+            state = "NO_VALID_QUOTE_DURING_EXPECTED_SESSION" if expected else "OUTSIDE_EXPECTED_SESSION"
+            quality = "NO_DATA"
+        elif persisted_quality == "DELAYED_SOURCE":
+            status, state, quality = "STALE", "DELAYED_SOURCE", "DELAYED_SOURCE"
+        elif not expected:
+            status, state, quality = "STALE", "OUTSIDE_EXPECTED_SESSION", "OFF_SESSION_SOURCE"
+        elif age_min is not None and age_min <= FRESH_MINUTES[asset]:
+            status, state, quality = "OK", "FRESH_PERSISTED", persisted_quality or "OK"
+        else:
+            status, state, quality = "ERROR", "STALE_DURING_EXPECTED_SESSION", persisted_quality or "STALE_SOURCE"
 
     details = {
         "asset": asset,
@@ -209,7 +230,10 @@ def run_asset(client, asset, cfg):
         "latest_ts_utc": iso(latest_ts) if latest_ts else None,
         "latest_price": latest_px,
         "age_minutes": round(age_min, 2) if age_min is not None else None,
+        "transport_lag_minutes": round(transport_lag_min, 2) if transport_lag_min is not None else None,
+        "max_transport_lag_minutes": MAX_TRANSPORT_LAG_MINUTES[asset],
         "freshness_limit_minutes": FRESH_MINUTES[asset],
+        "quality_status": quality,
         "fetch_error": fetch_error,
         "official_source": False,
         "context_only": True,
