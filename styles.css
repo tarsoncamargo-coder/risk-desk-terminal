@@ -4,3 +4,6 @@
 .tl-step.done{border-color:#315b45;color:#74c69d}
 .tl-step.active{border-color:#6f5b2f;color:#f0c674;background:#211d13}
 @media(max-width:650px){.timeline{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.tl-step{text-align:center}}
+
+.market-kv{grid-template-columns:90px 1fr 90px 1fr}
+@media(max-width:650px){.market-kv{grid-template-columns:90px 1fr}}
