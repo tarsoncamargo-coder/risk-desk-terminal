@@ -1,0 +1,59 @@
+RISK DESK V10 — J12 PREP PUBLISHER
+
+OBJETIVO
+Conectar o J11 e o GEN2 J10 congelado ao Supabase e ao novo card GEN2 do site.
+
+IMPORTANTE
+- Isto PREPARA a J12; nao declara J12 aprovada.
+- J12 so sera fechada depois de um POST5 realmente novo/fresco.
+- Sem treino, retuning, recalibracao, backtest ou sinal operacional.
+- Nao altera o motor do Laranjinha.
+
+INSTALACAO
+1. Copie para:
+   C:\Users\user\Documents\NinjaTrader 8\LaranjinhaML\J11
+
+   riskdesk_gen2_shadow_j12_publisher.py
+   start_gen2_stack_j12_prep.bat
+
+2. Na mesma pasta deve continuar existindo:
+   riskdesk_gen2_feature_builder_j11.py
+
+3. Nao abra ao mesmo tempo:
+   riskdesk_gen2_shadow_j10.py
+   e
+   riskdesk_gen2_shadow_j12_publisher.py
+
+   O novo publisher ja executa o engine GEN2 congelado e publica a previsao.
+
+4. Confirme que continuam definidas no Windows:
+   RISKDESK_SUPABASE_URL
+   RISKDESK_SUPABASE_SECRET_KEY
+
+5. De dois cliques:
+   start_gen2_stack_j12_prep.bat
+
+ESPERADO ANTES DO EVENTO
+- Builder pode ficar WAITING_POST5_ROW ou processando o ultimo evento.
+- Publisher pode ficar WARMUP.
+- Nenhuma previsao falsa deve ser gravada.
+
+NO EVENTO FRESCO
+Fluxo esperado:
+POST5 -> J11 ENRICHMENT_READY -> prospective_fresh=true ->
+GEN2 frozen -> semantic state -> prediction history -> heartbeat OK ->
+card GEN2 do site.
+
+ESTADO DE SUCESSO DO PUBLISHER
+PROSPECTIVE_SHADOW_PERSISTED_PENDING_J12_VALIDATION
+
+Isso significa que a previsao foi persistida, mas ainda precisa da auditoria J12.
+
+ARQUIVO LOCAL DE STATUS
+C:\Users\user\Documents\NinjaTrader 8\LaranjinhaML\RiskDesk_J12_Prospective_Publisher_Status.json
+
+Se houver erro, envie apenas:
+- a ultima linha [ERRO], ou
+- o conteudo do JSON acima.
+
+Nao precisa mandar varias screenshots.
