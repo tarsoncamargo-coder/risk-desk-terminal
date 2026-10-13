@@ -188,3 +188,71 @@ main {
   html { scroll-behavior: auto; }
   .btn, .sel, nav button { transition: none; }
 }
+
+
+/* TEMA ALTO CONTRASTE V11: inspirado em terminais financeiros.
+   SOMENTE CSS — sem alterar dados, estados, motores ou eventos. */
+:root{--bg:#07090b;--panel:#111519;--line:#39434e;--text:#f2f5f8;--muted:#b4bec9;--cyan:#4bdced;--green:#4ce9a0;--red:#ff7280;--amber:#ffc35e;color-scheme:dark}
+body{background:#07090b;color:var(--text);font-feature-settings:"tnum" 1}
+.top{background:#0a0d10f7;border-bottom:1px solid #755a31;box-shadow:0 7px 20px #0009}
+.brand{font-weight:900;color:#f6f8fb}
+.brand b{color:#ffc35e}
+.btn,.sel{background:#172028;border-color:#52606c;color:#f2f6fa}
+.btn:hover,.sel:hover{border-color:#f5bd56;background:#252a30}
+button:focus-visible,select:focus-visible,a:focus-visible{outline-color:#ffcf77}
+nav{background:#0c1014f2;border-bottom-color:#3a424b}
+nav button{color:#b7c5d0;font-weight:800}
+nav button:hover{color:#fff3d5;background:#211b12}
+nav button.on{color:#ffdb94;background:#2c2317;border-color:#a37b3d;box-shadow:inset 0 -2px 0 #ffc35e}
+.page>h1{color:#f8fafc;font-weight:820}
+.page>.sub{color:#b8c3ce}
+.card{background:#11161b;border-color:#3b4651;border-radius:7px;box-shadow:0 2px 14px #0007}
+.ct{font-size:11px;color:#ffc979;letter-spacing:.09em;font-weight:850}
+.mv,.sbox b,.rd-numeric,.cf-summary b,.cf-value,.v11-metric strong{font-family:ui-monospace,"Cascadia Code",Consolas,"Liberation Mono",monospace;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.mv{font-size:clamp(24px,2.65vw,34px);line-height:1.2;font-weight:850;overflow-wrap:anywhere}
+.ms{color:#aebac6}
+.pos{color:#5df0aa}
+.neg{color:#ff8894}
+.warn{color:#ffd583}
+.info{color:#6fe9f9}
+.badge{background:#151c22;border-color:#4a5866;color:#dce8f2}
+.badge.bgood{background:#0c251b;border-color:#2e7d58;color:#70f5b0}
+.badge.bbad{background:#2a1519;border-color:#913b47;color:#ff9ca6}
+.badge.bwarn{background:#2b2114;border-color:#947036;color:#ffdb93}
+.badge.bmain{background:#142536;border-color:#396887;color:#abdfff}
+.badge.bshadow{background:#241b32;border-color:#6a5094;color:#e1d1ff}
+.product-events .card{background:linear-gradient(155deg,#171d22,#101417 90%);border-top-color:#66717d}
+.product-events .card::before{background:linear-gradient(180deg,#ffc763,#c2872e 60%,transparent);width:3px;opacity:.95}
+.desk-mode{background:#171c20;border-color:#75572b}
+.desk-label{color:#ffe19e;background:#2a2113;border-color:#826127}
+.desk-label.desk-live{color:#68eba9;background:#10271b;border-color:#387657}
+.confluence-card{border-color:#58646f}
+.analysis-card{border-color:#4a5b69}
+.warning-card{border-color:#936d30}
+.notice{background:#291e11;border-color:#9a743b;color:#ffdda1}
+.tbl{background:#0b1015;border-color:#424d58}
+.tbl th,.tbl td{border-bottom-color:#303a43}
+.tbl th{background:#20272d;color:#ffd183;border-bottom:1px solid #846239;font-size:11px;font-weight:850}
+.tbl tr:nth-child(even){background:#ffffff06}
+.tbl tr:hover{background:#242e38}
+.tbl td{color:#e1eaf2}
+.tbl td.pos{color:#5ff1ac}
+.tbl td.neg{color:#ff8e99}
+.kv>div:nth-child(odd){color:#adbac6}
+.filters .sel{background:#171e26}
+.sbox,.rv-stage,.rv-pre-step{background:#141b20;border-color:#4e5a65}
+.sbox b{color:#fff;font-size:27px}
+.quad{border-color:#576471}
+.bar{background:#25303a}
+.fill{background:linear-gradient(90deg,#a97623,#ffd070)}
+.rv-switch button.rv-selected,.rv-switch button[aria-pressed="true"]{border-color:#d59b42;background:#302418;color:#ffe0a3}
+.rv-mode-summary,.rv-preview{background:#171f25;border-color:#52606e}
+.cf-value{font-size:13px;color:#f5f8fb}
+.dh,.drawer{background:#11171d}
+.foot{border-top-color:#39444e;color:#aab6c1}
+#v11Calendar .v11-metric{border-color:#4a5662;background:#181e23}
+#v11Calendar .v11-metric strong{color:#fff0c8;font-size:clamp(23px,2.5vw,32px)}
+#v11Calendar .v11-dataset-note{background:#172029;border-left-color:#e4ad53}
+#v11Calendar .v11-limits li{background:#261d12}
+@media(max-width:760px){.mv{font-size:clamp(22px,5vw,30px)}}
+@media(max-width:520px){.mv{font-size:25px}.ct{font-size:10px}}
