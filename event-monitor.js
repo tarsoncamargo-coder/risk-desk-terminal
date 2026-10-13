@@ -83,13 +83,13 @@
     var official=release && !!e.consensus_source && e.consensus!=null &&
       e.official_surprise!=null;
     var sem=data.semantic && data.semantic.event_id===e.event_id &&
-      data.semantic.mapping_complete===true && data.semantic.prospective_fresh===true;
+      data.semantic.mapping_complete===true && data.semantic.prospective_fresh===true && !!data.semantic.updated_at && new Date(data.semantic.updated_at).getTime()>=t0;
     var g1=(data.gen1||[]).find(function(g) {
-      return g.event_id===e.event_id && g.mode==="POST_5M" && g.service_state!=="ERROR";
+      return g.event_id===e.event_id && g.mode==="POST_5M" && g.service_state!=="ERROR" && !!g.source_updated_at && new Date(g.source_updated_at).getTime()>=t0+5*60000;
     })||null;
     var g2=data.gen2 && data.gen2.event_id===e.event_id &&
       data.gen2.prospective_fresh===true && data.gen2.feature_schema_complete===true &&
-      data.gen2.shadow_only===true && data.gen2.p_up_isotonic!=null ?data.gen2:null;
+      data.gen2.shadow_only===true && data.gen2.p_up_isotonic!=null && /POST.?5/i.test(data.gen2.stage||"") && !!data.gen2.prediction_ts_utc && new Date(data.gen2.prediction_ts_utc).getTime()>=t0+5*60000 ?data.gen2:null;
     function state(stage,offset) {
       var due=t0+offset*60000;
       if(Date.now()<due) return kind("Futuro","rv-muted","Aguardando horário da etapa");
@@ -104,11 +104,7 @@
         if(!g1||!g2)return kind("Aguardando GEN1/GEN2","rv-warn","Sem outputs POST5 prospectivos completos");
         return kind("Evidência publicada","rv-good","GEN1 POST_5M e GEN2 SHADOW prospectivo presentes");
       }
-      var field={"POST15":"range_15_pts","POST30":"range_30_pts","POST60":"range_60_pts"}[stage];
-      var sourceTime=g1&&g1.source_updated_at?new Date(g1.source_updated_at).getTime():NaN;
-      if(g1&&g1[field]!=null&&Number.isFinite(sourceTime)&&sourceTime>=due)
-        return kind("Evidência publicada","rv-good","Range "+offset+" min com timestamp posterior à janela");
-      return kind("Não validado","rv-warn","Aguardando leitura auditável da janela +"+offset+"m");
+      return kind("Sem auditoria","rv-warn","Falta output observado e auditável da janela +"+offset+"m (range previsto não comprova realização)");
     }
     return {e:e,release:release,official:official,sem:!!sem,g1:!!g1,g2:!!g2,rows:stages.map(function(s){
       return {name:s[0],offset:s[1],state:state(s[0],s[1])};
@@ -132,7 +128,7 @@
       '</strong><small>'+escText(r.state.detail)+'</small></div>';
     }).join("")+'</div>';
     if(target)target.innerHTML=headline+timeline+
-      '<p class="rd-footnote">Horários não comprovam outputs. PRE60 indica apenas janela. POST5 requer J11, GEN1 e GEN2 SHADOW prospectivos. POST15/30/60 exigem range persistido após a janela. Sem dados, a etapa não é marcada como concluída.</p>';
+      '<p class="rd-footnote">Horários não comprovam outputs. PRE60 indica apenas janela. POST5 requer J11, GEN1 e GEN2 SHADOW prospectivos. POST15/30/60 só serão confirmados com outputs observados e auditáveis, ainda não presentes nesta camada. Sem dados, a etapa não é marcada como concluída.</p>';
     if(technical){
       var health=data.health||[];
       function hb(key){
@@ -159,9 +155,9 @@
       ["quotes","riskdesk_live_latest_quotes_v1","select=asset,ts_utc,quality_status"],
       ["current","riskdesk_product_current_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
       ["next","riskdesk_product_next_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
-      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,mapping_complete,prospective_fresh"],
+      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,mapping_complete,prospective_fresh,updated_at"],
       ["gen1","riskdesk_product_current_gen1_v1","select=event_id,mode,service_state,source_updated_at,range_15_pts,range_30_pts,range_60_pts"],
-      ["gen2","riskdesk_product_current_gen2_shadow_v1","select=event_id,prospective_fresh,feature_schema_complete,shadow_only,p_up_isotonic"],
+      ["gen2","riskdesk_product_current_gen2_shadow_v1","select=event_id,prospective_fresh,feature_schema_complete,shadow_only,p_up_isotonic,stage,prediction_ts_utc"],
       ["health","riskdesk_product_system_health_v1","select=component,status,age_minutes"]
     ];
     var out=await Promise.allSettled(req.map(function(x){return api(x[1],x[2]);}));
