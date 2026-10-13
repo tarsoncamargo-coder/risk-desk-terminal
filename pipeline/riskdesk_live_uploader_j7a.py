@@ -11,7 +11,7 @@ except ImportError:
     print("Falta o pacote supabase. Execute: py -m pip install supabase")
     raise
 
-VERSION="V10.0.0J7A"
+VERSION="V10.0.0J7A-FIX1"
 VALID_ASSETS={"NQ","ZQ","ZT","ZN"}
 DEFAULT_CSV=Path.home()/"Documents"/"NinjaTrader 8"/"LaranjinhaML"/"Live"/"RiskDeskLiveBridge_J7A.csv"
 STATE_FILE=Path.home()/"Documents"/"NinjaTrader 8"/"LaranjinhaML"/"Live"/"riskdesk_live_uploader_state_j7a.json"
@@ -69,8 +69,18 @@ def read_new_rows(state):
     out.sort(key=lambda x:(x["ts_utc"],x["asset"]))
     return out
 
+def dedupe_rows(rows):
+    unique={}
+    for row in rows:
+        key=(row["ts_utc"],row["asset"],row["source"])
+        unique[key]=row
+    out=list(unique.values())
+    out.sort(key=lambda x:(x["ts_utc"],x["asset"],x["source"]))
+    return out
+
 def upsert_rows(client,rows,state):
     if not rows: return 0
+    rows=dedupe_rows(rows)
     for i in range(0,len(rows),100):
         client.table("live_market_minute").upsert(rows[i:i+100],on_conflict="ts_utc,asset,source").execute()
     last_ts=state.setdefault("last_ts",{})
