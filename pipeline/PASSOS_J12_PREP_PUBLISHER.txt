@@ -57,3 +57,11 @@ Se houver erro, envie apenas:
 - o conteudo do JSON acima.
 
 Nao precisa mandar varias screenshots.
+
+
+ATUALIZACAO PUBLISHER-B
+- O publisher tambem le RiskDesk_Nasdaq_GEN1_V13_Live.csv.
+- PRE_EVENT e POST_5M do evento atual sao persistidos de forma imutavel em gen1_event_context_history.
+- Heartbeat adicional: GEN1_CONTEXT.
+- GEN1 continua somente contexto/historico e nao participa de entrada/stop/alvo.
+- A Confluencia V1 nao usa GEN1 como voto direcional; usa GEN1 apenas como contexto/risco (ex.: conflito PB50/PB70).
