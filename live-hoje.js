@@ -4,7 +4,7 @@
 
   var ASSETS = ["NQ", "ZN", "ZT", "ZQ", "DXY", "VIX", "VXN"];
   // Limites apenas visuais; nao definem horario de negociacao nem validade operacional.
-  var DISPLAY_MIN = {NQ: 3, ZN: 3, ZT: 5, ZQ: 10, DXY: 15, VIX: 15, VXN: 15};
+  var DISPLAY_MIN = {NQ: 3, ZN: 3, ZT: 5, ZQ: 10, DXY: 5, VIX: 5, VXN: 5};
   var current = {quotes: null, market: null, event: null, regime: null, sigma: null};
   var errors = {};
   var requestId = 0;
@@ -39,14 +39,16 @@
   }
 
   function quoteState(q, minutes) {
-    if (!q) return ["Indisponivel", "rd-danger"];
-    if (q.quality_status === "OFF_SESSION_SOURCE") return ["Fora da sessao", "rd-neutral"];
-    if (q.quality_status !== "OK") return [q.quality_status || "Qualidade desconhecida", "rd-warning"];
-    if (minutes == null) return ["Horario desconhecido", "rd-warning"];
-    var limit = DISPLAY_MIN[q.asset] || 5;
-    if (minutes <= limit) return ["Recente", "rd-good"];
-    if (minutes <= limit * 2) return ["Atencao", "rd-warning"];
-    return ["Defasado", "rd-danger"];
+    if (!q) return ["UNAVAILABLE", "rd-neutral"];
+    var engine = window.RiskDeskCrossAsset;
+    if (engine) {
+      var quality = engine.quality(q.asset, q, Date.now());
+      var css = {FRESH:"rd-good", SPARSE:"rd-warning", DELAYED:"rd-danger",
+        OFF_SESSION:"rd-neutral", UNAVAILABLE:"rd-neutral"};
+      return [quality.state, css[quality.state] || "rd-neutral"];
+    }
+    if (q.quality_status === "OFF_SESSION_SOURCE") return ["OFF SESSION","rd-neutral"];
+    return ["QUALIDADE INDETERMINADA","rd-warning"];
   }
   function quoteDetail(q) {
     if (!q) return "Sem cotacao";
@@ -71,7 +73,7 @@
           '<td>' + ageLabel(age) + '</td>' +
           '<td>' + chip(state[0], state[1]) + '<div class="rd-sub">' + quoteDetail(q) + '</div></td></tr>';
       }).join("") + '</tbody></table></div>' +
-      '<p class="rd-footnote">A idade usa o timestamp da cotacao, nao o heartbeat. Os limites (NQ/ZN: 3 min; ZT: 5 min; ZQ: 10 min; DXY/VIX/VXN: 15 min) sao alertas visuais, nao atestados de mercado aberto. "OK" e qualidade de registro, nao garantia de preco instantaneo.</p>';
+      '<p class="rd-footnote">A idade usa o timestamp da cotacao, nao o heartbeat. Os limites (NQ/ZN: 3 min; ZT: 5 min; ZQ: 10 min; DXY/VIX/VXN: 5 min) sao alertas de leitura LIVE, nao atestados de mercado aberto. "OK" e qualidade de registro, nao garantia de preco instantaneo.</p>';
   }
 
   var FACTORS = [
@@ -95,7 +97,7 @@
     return translations[x] || x || "Sem leitura";
   }
   function factorSourceAge(key, asset, qMap) {
-    if (asset && qMap[asset]) return "Cotacao: " + ageLabel(ageMinutes(qMap[asset].ts_utc));
+    if (asset && qMap[asset]) { var q=qMap[asset]; var h=window.RiskDeskCrossAsset && window.RiskDeskCrossAsset.quality(asset,q,Date.now()); return "Cotacao: "+ageLabel(ageMinutes(q.ts_utc))+(h?" · "+h.state:""); }
     if (key === "sigma_reading" && current.sigma) {
       return "Estado: " + clean(current.sigma.status) + " · Motor: " + ageLabel(ageMinutes(current.sigma.as_of_utc));
     }

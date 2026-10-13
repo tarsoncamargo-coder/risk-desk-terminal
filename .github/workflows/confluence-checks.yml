@@ -1,0 +1,23 @@
+name: Risk Desk V10 - Confluence and POST Gates
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check source JavaScript syntax
+        run: |
+          node --check app.js
+          node --check ui_v2.js
+          node --check live-hoje.js
+          node --check cross-asset-core.js
+          node --check event-monitor.js
+      - name: Run confluence and post-event safeguards
+        run: |
+          node tests/confluence-v2.test.cjs
+          node tests/site-ui.test.cjs

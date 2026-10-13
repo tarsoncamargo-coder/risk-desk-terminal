@@ -5,8 +5,9 @@
   var escText = function (x) { return esc(x == null ? "—" : x); };
   var seq = 0;
   var liveRows = null, quotes = [], issue = "";
-  var tab = "event";
-  var thresholds = {NQ:3, ZN:3, ZT:5, ZQ:10, DXY:15, VIX:15, VXN:15};
+  var tab = "event", automatic = true, currentPhase = null, lastPhaseKey = null;
+  var thresholds = {NQ:3, ZN:3, ZT:5, ZQ:10, DXY:5, VIX:5, VXN:5};
+  var core = window.RiskDeskCrossAsset;
   var sourceMap = {NQ:"NQ", US2Y:"ZT", US10Y:"ZN", ZQ:"ZQ", DXY:"DXY"};
   function minutes(d) {
     var t = d ? new Date(d).getTime() : NaN;
@@ -18,57 +19,86 @@
   }
   function quote(asset) { return quotes.find(function (q) { return q.asset === asset; }) || null; }
   function assetHealth(asset) {
-    var q=quote(asset), age=q?minutes(q.ts_utc):null;
-    if(!q||age==null) return {good:false,text:"Sem cotação"};
-    if(q.quality_status!=="OK") return {good:false,text:q.quality_status || "Qualidade não validada"};
-    if(age>(thresholds[asset]||5)) return {good:false,text:"Defasado: "+age.toFixed(1)+" min"};
-    return {good:true,text:"Cotação "+age.toFixed(1)+" min"};
+    var q=quote(asset);
+    var h=core.quality(asset,q,Date.now());
+    var age=h.age===null?"—":Math.max(0,h.age).toFixed(1)+" min";
+    var labels={FRESH:"FRESH",SPARSE:"SPARSE · sem novo negócio",DELAYED:"DELAYED",
+      OFF_SESSION:"OFF SESSION",UNAVAILABLE:"INDISPONÍVEL"};
+    return {good:h.canConfirm,state:h.state,age:h.age,
+      text:(labels[h.state]||"INDISPONÍVEL")+" · "+age+
+      (q&&q.source?" · "+q.source:""),source:h.source};
   }
   function condition(name) {
     return '<span class="rv-tag">' + escText(name) + '</span>';
   }
   function renderMarketNow() {
     var box=el("rdMarketNow");
-    if(!box) return;
-    if(issue) {box.innerHTML='<p class="muted">Consulta LIVE indisponível: '+escText(issue)+'</p>';return;}
-    if(!Array.isArray(liveRows)) {box.innerHTML='<p class="muted">Consultando matriz LIVE...</p>';return;}
+    if(!box)return;
+    if(issue){box.innerHTML='<p class="muted">Consulta LIVE indisponível: '+escText(issue)+'</p>';return;}
+    if(!Array.isArray(liveRows)){box.innerHTML='<p class="muted">Consultando matriz LIVE...</p>';return;}
     var rows=liveRows.filter(function(r){return r.layer_key!=="EVENT";});
-    if(!rows.length) {box.innerHTML='<p class="muted">Sem matriz LIVE publicada.</p>';return;}
-    var labels={UP:"Alta observada",DOWN:"Baixa observada",NEUTRAL:"Sem variação observada"};
-    var graph=rows.map(function(r){
-      var vol=r.layer_key==="VOL";
-      var a=vol?assetHealth("VIX"):assetHealth(sourceMap[r.layer_key]);
-      var b=vol?assetHealth("VXN"):null;
-      var good=vol?(a.good&&b.good):a.good;
-      var direction=r.observed_direction;
-      var active=good&&r.market_window==="LIVE"&&r.product_status==="LEITURA_DISPONIVEL"&&
-          ["UP","DOWN","NEUTRAL"].includes(direction) && r.raw_value!=null;
-      var point=active?(direction==="UP"?"rv-up":direction==="DOWN"?"rv-down":"rv-flat"):"";
-      var status=active?labels[direction]:"Sem leitura LIVE validada";
-      var qlabel=vol?a.text+" · "+b.text:a.text;
-      var val=active?n(r.raw_value,4)+(r.value_unit==="PCT"?"%":""):"—";
+    if(!rows.length){box.innerHTML='<p class="muted">Sem matriz LIVE publicada.</p>';return;}
+    var assessed=rows.map(function(r) {
+      var a=core.classifyLayer(r,quotes,Date.now());
+      return Object.assign({layer_key:r.layer_key},a);
+    });
+    var pre=core.preSummary(assessed);
+    var graph=rows.map(function(r,k){
+      var v=assessed[k];
+      var active=v.state==="OBSERVED";
+      var q= v.asset?assetHealth(v.asset):{text:"Sem origem verificável"};
+      var point=active?(v.direction==="UP"?"rv-up":v.direction==="DOWN"?"rv-down":"rv-flat"):"";
+      var label=active?(v.direction==="UP"?"ALTA":v.direction==="DOWN"?"BAIXA":"ESTÁVEL"):"SEM VOTO LIVE";
+      if(r.layer_key==="US2Y"||r.layer_key==="US10Y"){
+        if(active&&v.direction!=="NEUTRAL")label+=v.direction==="DOWN"?" · YIELD ↑ (proxy)":" · YIELD ↓ (proxy)";
+      }else if(r.layer_key==="ZQ"&&active&&v.direction!=="NEUTRAL"){
+        label+=v.direction==="DOWN"?" · TAXA IMPLÍCITA ↑":" · TAXA IMPLÍCITA ↓";
+      }
       return '<div class="rv-line"><div class="rv-name"><b>'+escText(r.label||r.layer_key)+'</b>'+
-        '<small>'+escText(qlabel)+'</small></div><div class="rv-track"><span class="rv-zero"></span>'+
+        '<small>'+escText(q.text)+'</small></div><div class="rv-track"><span class="rv-zero"></span>'+
         (point?'<i class="rv-dot '+point+'"></i>':'')+'</div>'+
-        '<div class="rv-reading">'+escText(val)+'<small>'+escText(status)+'</small></div></div>';
+        '<div class="rv-reading">'+(active?escText(n(v.raw,4)+(r.value_unit==="PCT"?"%":"")):"—")+
+        '<small>'+escText(label)+'</small></div></div>';
     }).join("");
-    box.innerHTML='<div class="rv-top"><span>Variação observada nas fontes existentes</span>'+
+    box.innerHTML='<div class="rv-top"><span>Movimentos observados · janela LIVE</span>'+
       condition("CONTEXTO / NÃO OPERACIONAL")+'</div>'+
+      '<div class="rv-preview"><b>'+escText(pre.label)+'</b><span>'+
+      pre.usable+' fonte(s) direcionais elegíveis · padrão descritivo, não previsão de CPI ou sugestão de operação</span></div>'+
       '<div class="rv-axis"><span>BAIXA</span><span>ESTÁVEL</span><span>ALTA</span></div>'+graph+
-      '<p class="rd-footnote">Marcadores indicam somente UP/DOWN/NEUTRAL publicados pela matriz em janela LIVE e com cotação recente. Não expressam intensidade, alinhamento ao evento ou probabilidade. Dados ausentes e atrasados ficam sem marcador. Proxies ZT/ZN não são yields diretos.</p>';
+      '<p class="rd-footnote">FRESH é obrigatório para marcador. SPARSE (ZQ), DELAYED, OFF SESSION e UNAVAILABLE não confirmam LIVE. A seta de yield é apenas a orientação inversa do preço ZT/ZN, não um cálculo direto de taxa. A posição dos pontos ilustra a direção, não magnitude, probabilidade ou retorno. Só fonte e janela realmente verificadas participam.</p>';
   }
   function switchGraph(next) {
     tab=next;
     var event=el("rdEventMap"),market=el("rdMarketNow");
     if(event)event.classList.toggle("hidden",tab!=="event");
     if(market)market.classList.toggle("hidden",tab!=="live");
-    ["event","live"].forEach(function(t) {
+    ["event","live"].forEach(function(t){
       var b=el("rdTab-"+t);
-      if(b){b.setAttribute("aria-pressed",String(tab===t));b.classList.toggle("rv-selected",tab===t);}
+      if(b){b.setAttribute("aria-pressed",String(tab===t&&!automatic));b.classList.toggle("rv-selected",tab===t);}
     });
+    var ab=el("rdTab-auto");
+    if(ab){ab.setAttribute("aria-pressed",String(automatic));ab.classList.toggle("rv-selected",automatic);}
     if(tab==="live")renderMarketNow();
   }
-
+  function updateMode(data){
+    var e=(data.current||[])[0]||(data.next||[])[0]||null;
+    var sem=(data.semantic||[])[0]||null;
+    var mode=core.eventState(e,sem,data.windows||[],Date.now(),data.market||[]);
+    var phaseKey=(e?e.event_id:"NONE")+":"+mode.mode;
+    currentPhase=mode;
+    var status=el("rdModeSummary");
+    if(status)status.innerHTML='<div class="rv-top"><b>'+escText(mode.label)+'</b>'+
+      condition("LEITURA DESCRITIVA")+'</div><div class="rv-mode-desc">'+escText(mode.why)+
+      ' · A confirmação pós-evento exige uma janela POST observada; o horário do release, sozinho, não basta.</div>';
+    var gate=el("rdEventEvidenceGate");
+    if(gate)gate.textContent=mode.mode==="POST_CONFIRMATION"?
+      "Evidências pós-evento presentes. Verifique fonte, janela e freshness de cada linha antes de interpretar o alinhamento.":
+      "Mapa do evento: aguardando evidências direcionais pós-release; leituras LIVE antes do CPI não confirmam a surpresa.";
+    var original=el("directionalGraph");
+    if(original)original.classList.toggle("rv-hide-unconfirmed",mode.mode==="WAIT_POST_MARKET");
+    if(automatic&&(lastPhaseKey!==phaseKey||tab!==mode.tab))switchGraph(mode.tab);
+    lastPhaseKey=phaseKey;
+  }
   var stages=[
     ["PRE60",-60],["RELEASE",0],["POST1",1],
     ["POST5",5],["POST15",15],["POST30",30],["POST60",60]
@@ -148,17 +178,58 @@
         '</div><p class="rd-footnote">Monitoramento somente leitura. Ausência de registro não deve ser preenchida por dados históricos ou probabilidades de lucro.</p>';
     }
   }
+  function renderPreWindows(data){
+    var box=el("rdPreWindows");
+    if(!box)return;
+    var names=["PRE1440","PRE240","PRE60","PRE30","PRE15","PRE5"];
+    var windows=data.windows||[];
+    box.innerHTML='<div class="rv-pre-title">Snapshots pré-evento (não são previsões)</div>'+
+      '<div class="rv-pre-steps">'+names.map(function(name){
+        var w=windows.find(function(x){return x.window===name;});
+        var valid=w&&w.product_status==="LEITURA_DISPONIVEL"&&!!w.as_of_utc;
+        return '<div class="rv-pre-step"><b>'+name+'</b><span class="'+(valid?"rv-state-ready":"rv-state-wait")+'">'+
+          escText(valid?"DISPONÍVEL":w?(w.product_status||"AGUARDANDO"):"SEM SNAPSHOT")+
+          '</span></div>';
+      }).join("")+'</div><p class="rd-footnote">PRE1440 → PRE5 seguem as janelas oficiais do Market State. Disponível significa snapshot publicado, não reação confirmada.</p>';
+  }
+  function renderSourceGate(data,errors){
+    var box=el("rdSourceGate");
+    if(!box)return;
+    var h=data.heartbeat||[],event=h.find(function(x){return x.component==="EVENT_ENGINE";});
+    var g1=h.find(function(x){return x.component==="GEN1_CONTEXT";});
+    var g2=h.find(function(x){return x.component==="GEN2_SHADOW";});
+    function fmt(x){
+      if(!x)return "Sem heartbeat";
+      var time=x.last_seen_utc?minutes(x.last_seen_utc):null;
+      var a=time===null?"horário desconhecido":Math.max(0,time).toFixed(1)+" min";
+      return (x.status||"UNKNOWN")+" · "+a;
+    }
+    var mode=event&&event.details&&event.details.bls_actual_mode;
+    var restricted=/UNREGISTERED|LIMITED|NO_SOURCE|PENDING/.test(mode||"");
+    var target=(data.current||[])[0]||(data.next||[])[0]||null;
+    box.innerHTML='<div class="rv-diagnostics">'+
+      '<div>Aquisição de Actual BLS <b>'+escText(mode||"Não informado")+'</b></div>'+
+      '<div>Fonte oficial <b>'+escText(fmt(event))+'</b></div>'+
+      '<div>Consenso do próximo release <b>'+escText(target&&target.consensus_source?target.consensus_source:"AINDA NÃO VALIDADO")+'</b></div>'+
+      '<div>Publicador GEN1 <b>'+escText(fmt(g1))+'</b></div>'+
+      '<div>Publicador GEN2 SHADOW <b>'+escText(fmt(g2))+'</b></div></div>'+
+      (restricted?'<p class="rv-source-alert">Bloqueador: o coletor informa modo limitado para resultados oficiais. A agenda OK não prova que Actual/consenso chegarão após o release. É necessário validar a fonte de divulgação antes de homologar J11/J12.</p>':
+      '<p class="rd-footnote">Heartbeats recentes não comprovam publicação prospectiva, mesmo quando os processos estão OK.</p>')+
+      (errors&&errors.length?'<p class="rv-source-alert">Falha nas consultas: '+escText(errors.join(", "))+'</p>':"");
+  }
   async function refresh(){
     var id=++seq;
     var req=[
       ["market","riskdesk_product_directional_matrix_v1","select=layer_key,label,raw_value,value_unit,observed_direction,alignment,product_status,market_window,detail&order=sort_order.asc"],
-      ["quotes","riskdesk_live_latest_quotes_v1","select=asset,ts_utc,quality_status"],
+      ["quotes","riskdesk_live_latest_quotes_v1","select=asset,symbol,source,ts_utc,received_at,quality_status"],
       ["current","riskdesk_product_current_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
       ["next","riskdesk_product_next_event_v1","select=event_id,event_family,scheduled_ts_utc,source_status,actual,consensus,official_surprise,actual_source,consensus_source,available_at"],
-      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,mapping_complete,prospective_fresh,updated_at"],
+      ["semantic","riskdesk_product_current_semantic_v1","select=event_id,stance_bundle,mapping_complete,prospective_fresh,updated_at"],
       ["gen1","riskdesk_product_current_gen1_v1","select=event_id,mode,service_state,source_updated_at,range_15_pts,range_30_pts,range_60_pts"],
       ["gen2","riskdesk_product_current_gen2_shadow_v1","select=event_id,prospective_fresh,feature_schema_complete,shadow_only,p_up_isotonic,stage,prediction_ts_utc"],
-      ["health","riskdesk_product_system_health_v1","select=component,status,age_minutes"]
+      ["health","riskdesk_product_system_health_v1","select=component,status,age_minutes"],
+      ["windows","riskdesk_product_market_state_v2_v1","select=event_id,window,product_status,window_status,as_of_utc&order=as_of_utc.desc"],
+      ["heartbeat","live_pipeline_heartbeat","select=component,status,last_seen_utc,details&component=in.(EVENT_ENGINE,GEN1_CONTEXT,GEN2_SHADOW)"]
     ];
     var out=await Promise.allSettled(req.map(function(x){return api(x[1],x[2]);}));
     if(id!==seq)return;
@@ -168,6 +239,14 @@
     liveRows=out[0].status==="fulfilled"?data.market:null;
     quotes=out[1].status==="fulfilled"?data.quotes:[];
     renderMarketNow();
+    var failures=req.filter(function(x,i){return out[i].status==="rejected";}).map(function(x){return x[0];});
+    renderPreWindows(data);
+    renderSourceGate(data,failures);
+    if (out[2].status!=="rejected" && out[3].status!=="rejected") updateMode(data);
+    else {
+      var summary=el("rdModeSummary");
+      if(summary)summary.textContent="Estado do evento indisponível · consulta de evento falhou";
+    }
     if (out[2].status==="rejected" || out[3].status==="rejected") {
       ["rdPostFlow","rdPostDiagnostics"].forEach(function(key){
         var node=el(key);
@@ -175,20 +254,20 @@
       });
     } else {
       renderPost(data);
-      var failures=req.filter(function(x,i){return i>=4&&out[i].status==="rejected";})
-        .map(function(x){return x[0];});
-      if(failures.length) {
+      var blocked=failures.filter(function(x){return ["semantic","gen1","gen2","health","windows"].includes(x);});
+      if(blocked.length) {
         ["rdPostFlow","rdPostDiagnostics"].forEach(function(key) {
           var node=el(key);
           if(node)node.insertAdjacentHTML("afterbegin",
-            '<p class="rd-footnote rv-query-warning">Consulta indisponível: '+escText(failures.join(", "))+
+            '<p class="rd-footnote rv-query-warning">Consulta indisponível: '+escText(blocked.join(", "))+
             '. Sem confirmação das fases afetadas.</p>');
         });
       }
     }
   }
-  el("rdTab-event").addEventListener("click",function(){switchGraph("event");});
-  el("rdTab-live").addEventListener("click",function(){switchGraph("live");});
+  el("rdTab-event").addEventListener("click",function(){automatic=false;switchGraph("event");});
+  el("rdTab-live").addEventListener("click",function(){automatic=false;switchGraph("live");});
+  el("rdTab-auto").addEventListener("click",function(){automatic=true;lastPhaseKey=null;if(currentPhase)switchGraph(currentPhase.tab);});
   el("refresh").addEventListener("click",refresh);
   switchGraph("event");
   refresh();
