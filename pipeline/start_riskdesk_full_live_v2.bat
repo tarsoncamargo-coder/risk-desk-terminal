@@ -90,6 +90,18 @@ echo ============================================================
 echo PREFLIGHT OK
 echo ============================================================
 echo.
+echo Encerrando janelas antigas do mesmo stack para evitar processos duplicados...
+for %%T in (
+  "Risk Desk - NQ ZQ ZT ZN Uploader"
+  "Risk Desk - DXY VIX VXN"
+  "Risk Desk - Market State V2"
+  "Risk Desk - J11 Feature Builder"
+  "Risk Desk - J12 Publisher"
+) do (
+  taskkill /FI "WINDOWTITLE eq %%~T*" /T /F >nul 2>nul
+)
+timeout /t 2 /nobreak >nul
+echo.
 
 echo 1/5 Abrindo uploader NinjaTrader...
 start "Risk Desk - NQ ZQ ZT ZN Uploader" cmd.exe /k ""%PYTHON%" "%UPLOADER%""
