@@ -444,6 +444,21 @@ def cycle(client, engine):
         write_local_status(state)
         return state
 
+    if j11.get("prospective_fresh") is not True or j11.get("observation_class") != "PROSPECTIVE_FRESH":
+        state = {
+            "mode": "RESEARCH_SHADOW_ONLY",
+            "state": "HISTORICAL_OR_STALE_NOT_ELIGIBLE_FOR_J12",
+            "event_ts_utc": event_iso(row.get("DT_EVENTO_UTC")),
+            "observation_class": j11.get("observation_class"),
+            "prospective_fresh": bool(j11.get("prospective_fresh") is True),
+            "semantic_persisted": False,
+            "gen2_prediction_persisted": False,
+            "operational_authorized": False,
+        }
+        heartbeat(client, "WARMUP", state)
+        write_local_status(state)
+        return state
+
     event_rec, event_err = resolve_event_id(
         client, row.get("DT_EVENTO_UTC"), row.get("FamiliaMacro")
     )
@@ -453,7 +468,7 @@ def cycle(client, engine):
             "state": event_err,
             "event_ts_utc": event_iso(row.get("DT_EVENTO_UTC")),
             "family": row.get("FamiliaMacro"),
-            "prospective_fresh": bool(j11.get("prospective_fresh") is True),
+            "prospective_fresh": True,
             "operational_authorized": False,
         }
         heartbeat(client, "WARMUP", state)
@@ -462,22 +477,6 @@ def cycle(client, engine):
 
     sem_body = semantic_payload(event_rec, row, j11)
     publish_semantic(client, sem_body)
-
-    if j11.get("prospective_fresh") is not True or j11.get("observation_class") != "PROSPECTIVE_FRESH":
-        state = {
-            "mode": "RESEARCH_SHADOW_ONLY",
-            "state": "HISTORICAL_OR_STALE_NOT_ELIGIBLE_FOR_J12",
-            "event_id": event_rec["event_id"],
-            "event_ts_utc": event_iso(row.get("DT_EVENTO_UTC")),
-            "observation_class": j11.get("observation_class"),
-            "prospective_fresh": bool(j11.get("prospective_fresh") is True),
-            "semantic_persisted": True,
-            "gen2_prediction_persisted": False,
-            "operational_authorized": False,
-        }
-        heartbeat(client, "WARMUP", state)
-        write_local_status(state)
-        return state
 
     pred = engine.predict_shadow(row)
 
