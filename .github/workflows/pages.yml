@@ -26,6 +26,7 @@ jobs:
           node --check event-monitor.js
           node --check cross-asset-core.js
           node tests/confluence-v2.test.cjs
+          node tests/site-ui.test.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
