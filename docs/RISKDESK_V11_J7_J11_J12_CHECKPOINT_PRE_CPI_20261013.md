@@ -23,6 +23,18 @@
 | `live_market_minute` | NQ, ZT, ZN e ZQ com último minuto `19:55 UTC`; DXY último `19:47 UTC`, recebido `19:57 UTC` | **DXY ATRASADO; NÃO VOTA COMO FRESCO** |
 | `riskdesk_product_current_event_v1` | 0 linhas no pré-evento; `riskdesk_product_next_event_v1` 1 linha | **CONSISTENTE COM PRÉ-RELEASE** |
 
+## 1A. Revisão do código-fonte J7B FREE FIX2 FINAL (cópia do projeto, NÃO instalação verificada)
+
+Uma cópia do script `riskdesk_live_j7b_FREE_FIX2_FINAL.py` foi localizada entre os arquivos fornecidos ao projeto. Não foi possível conferir se o launcher do Windows executa **essa mesma cópia**, com os mesmos parâmetros. A auditoria de arquivo detectou:
+
+- `BLS_V1_BUDGET=18` requisições/dia ET e `BLS_POLL_V1_SECONDS=7200` (2 horas) quando **não existe `RISKDESK_BLS_API_KEY`**. Após a primeira tentativa no release, uma nova consulta normalmente não ocorre antes dessas 2 horas. O script usa `BLS_V2_BUDGET=400` e `BLS_POLL_V2_SECONDS=300` se houver chave registrada — **também não é uma garantia de Actual até +5 minutos**.
+- A consulta BLS é efetuada por séries oficiais mensais, das quais o script **deriva** MoM/YoY (CPI) e mudanças de nível (Employment). O registro distingue `actual_source=BLS_PUBLIC_API_DERIVED`; não é um feed de headlines instantâneas.
+- O coletor só registra `BLS_ACTUAL_ADAPTER` depois que começa a tentar obter Actual no intervalo do release. A ausência desse heartbeat **antes do evento** não indica, sozinha, falha do executável.
+- O código bloqueia publicações antes do horário do evento, não sintetiza consenso ausente, espera os componentes completos e evita sobrescrever um evento já publicado.
+- **Dependência crítica do J12 POST5:** validar um meio **prospectivo, tempestivo e autorizado** de obter Actual e sua hora real de disponibilidade. Não aumentar frequência nem contornar cotas/guardrails do BLS às cegas.
+
+**Correção de escopo:** a cópia do arquivo foi encontrada, porém a versão efetivamente em execução e o launcher local ainda precisam ser verificados antes de fazer qualquer patch. Nenhum segredo/valor de `RISKDESK_BLS_API_KEY` deve ser compartilhado.
+
 **Interpretação:** a captura da agenda, o armazenamento de consensos e snapshots PRE existem. O encadeamento de **Actual oficial → componentes → semântica J11 → GEN1/GEN2 J12 → site** ainda não foi demonstrado com uma divulgação prospectiva. Não declarar “J11/J12 funcionando” apenas porque o heartbeat relata `WARMUP`.
 
 ## 2. Ordem de validação em 14/10 — sem ajustar o motor antes de medir
@@ -138,6 +150,6 @@ TREINO_BACKTEST_IMPORTACAO_OPERACIONAL: NAO
 
 ### Escopo protegido
 
-Esta auditoria não altera `main`, site, Supabase LIVE, NinjaTrader/Laranjinha, modelos GEN1/GEN2, corpus V11, calibrações ou coletoras locais. **O código J7B e o launcher instalado no Windows não estão disponíveis neste repositório; nenhuma correção de Actual deve ser inventada sem ler sua versão instalada.** A etapa seguinte de correção exige primeiro obter os arquivos locais reais, sem chaves/tokens.
+Esta auditoria não altera `main`, site, Supabase LIVE, NinjaTrader/Laranjinha, modelos GEN1/GEN2, corpus V11, calibrações ou coletoras locais. **Uma cópia do código J7B FIX2 FINAL foi localizada nos arquivos do projeto, mas não foi comprovada a identidade com a versão instalada no Windows; o launcher e a configuração atual continuam não inspecionados. Não substituir executáveis nem inventar correções de Actual.** A etapa seguinte de correção exige primeiro obter os arquivos locais reais, sem chaves/tokens.
 
 **Referência anterior:** `docs/RISKDESK_V10_CPI_POST_EVENTO_GATES.md`. Este checkpoint acrescenta dados reais de leitura do banco, mas **não substitui** o protocolo de validação publicado.
