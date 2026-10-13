@@ -83,7 +83,7 @@
   function updateMode(data){
     var e=(data.current||[])[0]||(data.next||[])[0]||null;
     var sem=(data.semantic||[])[0]||null;
-    var mode=core.eventState(e,sem,data.windows||[],Date.now());
+    var mode=core.eventState(e,sem,data.windows||[],Date.now(),data.market||[]);
     var phaseKey=(e?e.event_id:"NONE")+":"+mode.mode;
     currentPhase=mode;
     var status=el("rdModeSummary");
