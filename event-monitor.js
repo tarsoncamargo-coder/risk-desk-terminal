@@ -167,7 +167,25 @@
     issue=out[0].status==="rejected"?String(out[0].reason&&out[0].reason.message||out[0].reason):"";
     liveRows=out[0].status==="fulfilled"?data.market:null;
     quotes=out[1].status==="fulfilled"?data.quotes:[];
-    renderMarketNow();renderPost(data);
+    renderMarketNow();
+    if (out[2].status==="rejected" || out[3].status==="rejected") {
+      ["rdPostFlow","rdPostDiagnostics"].forEach(function(key){
+        var node=el(key);
+        if(node)node.innerHTML='<div class="rd-empty">Não foi possível verificar o evento. Estado pós-evento não determinado.</div>';
+      });
+    } else {
+      renderPost(data);
+      var failures=req.filter(function(x,i){return i>=4&&out[i].status==="rejected";})
+        .map(function(x){return x[0];});
+      if(failures.length) {
+        ["rdPostFlow","rdPostDiagnostics"].forEach(function(key) {
+          var node=el(key);
+          if(node)node.insertAdjacentHTML("afterbegin",
+            '<p class="rd-footnote rv-query-warning">Consulta indisponível: '+escText(failures.join(", "))+
+            '. Sem confirmação das fases afetadas.</p>');
+        });
+      }
+    }
   }
   el("rdTab-event").addEventListener("click",function(){switchGraph("event");});
   el("rdTab-live").addEventListener("click",function(){switchGraph("live");});
