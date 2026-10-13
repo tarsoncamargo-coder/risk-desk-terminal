@@ -5,8 +5,9 @@
   var escText = function (x) { return esc(x == null ? "—" : x); };
   var seq = 0;
   var liveRows = null, quotes = [], issue = "";
-  var tab = "event";
-  var thresholds = {NQ:3, ZN:3, ZT:5, ZQ:10, DXY:15, VIX:15, VXN:15};
+  var tab = "event", automatic = true, currentPhase = null, lastPhaseKey = null;
+  var thresholds = {NQ:3, ZN:3, ZT:5, ZQ:10, DXY:5, VIX:5, VXN:5};
+  var core = window.RiskDeskCrossAsset;
   var sourceMap = {NQ:"NQ", US2Y:"ZT", US10Y:"ZN", ZQ:"ZQ", DXY:"DXY"};
   function minutes(d) {
     var t = d ? new Date(d).getTime() : NaN;
@@ -18,57 +19,84 @@
   }
   function quote(asset) { return quotes.find(function (q) { return q.asset === asset; }) || null; }
   function assetHealth(asset) {
-    var q=quote(asset), age=q?minutes(q.ts_utc):null;
-    if(!q||age==null) return {good:false,text:"Sem cotação"};
-    if(q.quality_status!=="OK") return {good:false,text:q.quality_status || "Qualidade não validada"};
-    if(age>(thresholds[asset]||5)) return {good:false,text:"Defasado: "+age.toFixed(1)+" min"};
-    return {good:true,text:"Cotação "+age.toFixed(1)+" min"};
+    var q=quote(asset);
+    var h=core.quality(asset,q,Date.now());
+    var age=h.age===null?"—":Math.max(0,h.age).toFixed(1)+" min";
+    var labels={FRESH:"FRESH",SPARSE:"SPARSE · sem novo negócio",DELAYED:"DELAYED",
+      OFF_SESSION:"OFF SESSION",UNAVAILABLE:"INDISPONÍVEL"};
+    return {good:h.canConfirm,state:h.state,age:h.age,
+      text:(labels[h.state]||"INDISPONÍVEL")+" · "+age+
+      (q&&q.source?" · "+q.source:""),source:h.source};
   }
   function condition(name) {
     return '<span class="rv-tag">' + escText(name) + '</span>';
   }
   function renderMarketNow() {
     var box=el("rdMarketNow");
-    if(!box) return;
-    if(issue) {box.innerHTML='<p class="muted">Consulta LIVE indisponível: '+escText(issue)+'</p>';return;}
-    if(!Array.isArray(liveRows)) {box.innerHTML='<p class="muted">Consultando matriz LIVE...</p>';return;}
+    if(!box)return;
+    if(issue){box.innerHTML='<p class="muted">Consulta LIVE indisponível: '+escText(issue)+'</p>';return;}
+    if(!Array.isArray(liveRows)){box.innerHTML='<p class="muted">Consultando matriz LIVE...</p>';return;}
     var rows=liveRows.filter(function(r){return r.layer_key!=="EVENT";});
-    if(!rows.length) {box.innerHTML='<p class="muted">Sem matriz LIVE publicada.</p>';return;}
-    var labels={UP:"Alta observada",DOWN:"Baixa observada",NEUTRAL:"Sem variação observada"};
-    var graph=rows.map(function(r){
-      var vol=r.layer_key==="VOL";
-      var a=vol?assetHealth("VIX"):assetHealth(sourceMap[r.layer_key]);
-      var b=vol?assetHealth("VXN"):null;
-      var good=vol?(a.good&&b.good):a.good;
-      var direction=r.observed_direction;
-      var active=good&&r.market_window==="LIVE"&&r.product_status==="LEITURA_DISPONIVEL"&&
-          ["UP","DOWN","NEUTRAL"].includes(direction) && r.raw_value!=null;
-      var point=active?(direction==="UP"?"rv-up":direction==="DOWN"?"rv-down":"rv-flat"):"";
-      var status=active?labels[direction]:"Sem leitura LIVE validada";
-      var qlabel=vol?a.text+" · "+b.text:a.text;
-      var val=active?n(r.raw_value,4)+(r.value_unit==="PCT"?"%":""):"—";
+    if(!rows.length){box.innerHTML='<p class="muted">Sem matriz LIVE publicada.</p>';return;}
+    var assessed=rows.map(function(r) {
+      var a=core.classifyLayer(r,quotes,Date.now());
+      return Object.assign({layer_key:r.layer_key},a);
+    });
+    var pre=core.preSummary(assessed);
+    var graph=rows.map(function(r,k){
+      var v=assessed[k];
+      var active=v.state==="OBSERVED";
+      var q= v.asset?assetHealth(v.asset):{text:"Sem origem verificável"};
+      var point=active?(v.direction==="UP"?"rv-up":v.direction==="DOWN"?"rv-down":"rv-flat"):"";
+      var label=active?(v.direction==="UP"?"ALTA":v.direction==="DOWN"?"BAIXA":"ESTÁVEL"):"SEM VOTO LIVE";
+      if(r.layer_key==="US2Y"||r.layer_key==="US10Y"){
+        if(active&&v.direction!=="NEUTRAL")label+=v.direction==="DOWN"?" · YIELD ↑ (proxy)":" · YIELD ↓ (proxy)";
+      }else if(r.layer_key==="ZQ"&&active&&v.direction!=="NEUTRAL"){
+        label+=v.direction==="DOWN"?" · TAXA IMPLÍCITA ↑":" · TAXA IMPLÍCITA ↓";
+      }
       return '<div class="rv-line"><div class="rv-name"><b>'+escText(r.label||r.layer_key)+'</b>'+
-        '<small>'+escText(qlabel)+'</small></div><div class="rv-track"><span class="rv-zero"></span>'+
+        '<small>'+escText(q.text)+'</small></div><div class="rv-track"><span class="rv-zero"></span>'+
         (point?'<i class="rv-dot '+point+'"></i>':'')+'</div>'+
-        '<div class="rv-reading">'+escText(val)+'<small>'+escText(status)+'</small></div></div>';
+        '<div class="rv-reading">'+(active?escText(n(v.raw,4)+(r.value_unit==="PCT"?"%":"")):"—")+
+        '<small>'+escText(label)+'</small></div></div>';
     }).join("");
-    box.innerHTML='<div class="rv-top"><span>Variação observada nas fontes existentes</span>'+
+    box.innerHTML='<div class="rv-top"><span>Movimentos observados · janela LIVE</span>'+
       condition("CONTEXTO / NÃO OPERACIONAL")+'</div>'+
+      '<div class="rv-preview"><b>'+escText(pre.label)+'</b><span>'+
+      pre.usable+' fonte(s) direcionais elegíveis · padrão descritivo, não previsão de CPI ou sugestão de operação</span></div>'+
       '<div class="rv-axis"><span>BAIXA</span><span>ESTÁVEL</span><span>ALTA</span></div>'+graph+
-      '<p class="rd-footnote">Marcadores indicam somente UP/DOWN/NEUTRAL publicados pela matriz em janela LIVE e com cotação recente. Não expressam intensidade, alinhamento ao evento ou probabilidade. Dados ausentes e atrasados ficam sem marcador. Proxies ZT/ZN não são yields diretos.</p>';
+      '<p class="rd-footnote">FRESH é obrigatório para marcador. SPARSE (ZQ), DELAYED, OFF SESSION e UNAVAILABLE não confirmam LIVE. A seta de yield é apenas a orientação inversa do preço ZT/ZN, não um cálculo direto de taxa. A posição dos pontos ilustra a direção, não magnitude, probabilidade ou retorno. Só fonte e janela realmente verificadas participam.</p>';
   }
   function switchGraph(next) {
     tab=next;
     var event=el("rdEventMap"),market=el("rdMarketNow");
     if(event)event.classList.toggle("hidden",tab!=="event");
     if(market)market.classList.toggle("hidden",tab!=="live");
-    ["event","live"].forEach(function(t) {
+    ["event","live"].forEach(function(t){
       var b=el("rdTab-"+t);
-      if(b){b.setAttribute("aria-pressed",String(tab===t));b.classList.toggle("rv-selected",tab===t);}
+      if(b){b.setAttribute("aria-pressed",String(tab===t&&!automatic));b.classList.toggle("rv-selected",tab===t);}
     });
+    var ab=el("rdTab-auto");
+    if(ab){ab.setAttribute("aria-pressed",String(automatic));ab.classList.toggle("rv-selected",automatic);}
     if(tab==="live")renderMarketNow();
   }
-
+  function updateMode(data){
+    var e=(data.current||[])[0]||(data.next||[])[0]||null;
+    var sem=(data.semantic||[])[0]||null;
+    var mode=core.eventState(e,sem,data.windows||[],Date.now());
+    var phaseKey=(e?e.event_id:"NONE")+":"+mode.mode;
+    currentPhase=mode;
+    var status=el("rdModeSummary");
+    if(status)status.innerHTML='<div class="rv-top"><b>'+escText(mode.label)+'</b>'+
+      condition("LEITURA DESCRITIVA")+'</div><div class="rv-mode-desc">'+escText(mode.why)+
+      ' · A confirmação pós-evento exige uma janela POST observada; o horário do release, sozinho, não basta.</div>';
+    var gate=el("rdEventEvidenceGate");
+    if(gate)gate.textContent=mode.mode==="POST_CONFIRMATION"?
+      "Evidências pós-evento presentes. Verifique fonte, janela e freshness de cada linha antes de interpretar o alinhamento.":
+      "Mapa do evento: aguardando evidências direcionais pós-release; leituras LIVE antes do CPI não confirmam a surpresa.";
+    if(automatic&&(lastPhaseKey!==phaseKey||tab!==mode.tab))switchGraph(mode.tab);
+    lastPhaseKey=phaseKey;
+  }
   var stages=[
     ["PRE60",-60],["RELEASE",0],["POST1",1],
     ["POST5",5],["POST15",15],["POST30",30],["POST60",60]
@@ -187,8 +215,9 @@
       }
     }
   }
-  el("rdTab-event").addEventListener("click",function(){switchGraph("event");});
-  el("rdTab-live").addEventListener("click",function(){switchGraph("live");});
+  el("rdTab-event").addEventListener("click",function(){automatic=false;switchGraph("event");});
+  el("rdTab-live").addEventListener("click",function(){automatic=false;switchGraph("live");});
+  el("rdTab-auto").addEventListener("click",function(){automatic=true;lastPhaseKey=null;if(currentPhase)switchGraph(currentPhase.tab);});
   el("refresh").addEventListener("click",refresh);
   switchGraph("event");
   refresh();
