@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 
 from supabase import create_client
 
-VERSION = "V10.0.0J7D-FIX2"
+VERSION = "V10.0.0J7D-FIX3"
 POLL_SECONDS = 60
 WINDOWS = [
     ("PRE1440", 1440),
@@ -84,6 +84,16 @@ def iso(dt):
 
 def minute_floor(dt):
     return dt.replace(second=0, microsecond=0)
+
+
+def is_usable_quality(value):
+    return str(value or "").strip().upper() == "OK"
+
+
+def cache_non_null(cache, key, value):
+    if value is not None:
+        cache[key] = value
+    return value
 
 
 def safe_pct(start_price, end_price):
@@ -165,7 +175,10 @@ def quote_after(client, asset, target):
     )
     if not rows:
         return None
-    row = min(rows, key=lambda r: abs((parse_dt(r["ts_utc"]) - target).total_seconds()))
+    usable = [r for r in rows if is_usable_quality(r.get("quality_status"))]
+    if not usable:
+        return None
+    row = min(usable, key=lambda r: abs((parse_dt(r["ts_utc"]) - target).total_seconds()))
     return {
         "ts": parse_dt(row["ts_utc"]),
         "price": float(row["price"]),
@@ -192,6 +205,8 @@ def quote_before(client, asset, target):
     if not rows:
         return None
     row = rows[0]
+    if not is_usable_quality(row.get("quality_status")):
+        return None
     ts = parse_dt(row["ts_utc"])
     age = (target - ts).total_seconds() / 60.0
     if age > gap + 0.01:
@@ -206,16 +221,16 @@ def quote_before(client, asset, target):
 
 def baseline_quote(client, event_id, window_name, asset, target):
     key = (event_id, window_name, asset)
-    if key not in BASELINE_CACHE:
-        BASELINE_CACHE[key] = quote_after(client, asset, target)
-    return BASELINE_CACHE[key]
+    if key in BASELINE_CACHE:
+        return BASELINE_CACHE[key]
+    return cache_non_null(BASELINE_CACHE, key, quote_after(client, asset, target))
 
 
 def frozen_endpoint_quote(client, event_id, window_name, asset, target):
     key = (event_id, window_name, asset)
-    if key not in FROZEN_ENDPOINT_CACHE:
-        FROZEN_ENDPOINT_CACHE[key] = quote_before(client, asset, target)
-    return FROZEN_ENDPOINT_CACHE[key]
+    if key in FROZEN_ENDPOINT_CACHE:
+        return FROZEN_ENDPOINT_CACHE[key]
+    return cache_non_null(FROZEN_ENDPOINT_CACHE, key, quote_before(client, asset, target))
 
 
 def sign_reading(value, pos, neg, neutral="NEUTRAL"):
