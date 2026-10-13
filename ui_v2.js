@@ -146,6 +146,24 @@ function directionalValue(r){
   if(r.value_unit==="SIGMA_Z")return r.raw_value==null?uiTokenV2(r.observed_direction||"UNAVAILABLE"):sign(r.raw_value,2)+" z";
   return r.raw_value==null?uiTokenV2(r.observed_direction||"UNAVAILABLE"):sign(r.raw_value,4)+"%";
 }
+function cfAgeForAsset(asset) {
+  const quotes = window.riskDeskQuoteFeed;
+  if (!Array.isArray(quotes)) return asset+": aguardando cotacao";
+  const q = quotes.find(x=>x.asset===asset);
+  if (!q || !q.ts_utc) return asset+": indisponivel";
+  const t = new Date(q.ts_utc).getTime();
+  if (!Number.isFinite(t)) return asset+": horario indisponivel";
+  const age = Math.max(0,(Date.now()-t)/60000);
+  return asset+": "+age.toFixed(1)+" min | "+(q.quality_status||"SEM QUALIDADE");
+}
+function cfFreshness(layer) {
+  if (layer==="EVENT") return "Evento: aguardando release oficial";
+  if (layer==="US2Y") return cfAgeForAsset("ZT");
+  if (layer==="US10Y") return cfAgeForAsset("ZN");
+  if (layer==="VOL") return cfAgeForAsset("VIX")+" · "+cfAgeForAsset("VXN");
+  if (["NQ","DXY","ZQ"].includes(layer)) return cfAgeForAsset(layer);
+  return "Sem fonte individual configurada";
+}
 function renderDirectionalGraph(){
   const el=$("directionalGraph"),rel=$("relatedEvents");
   if(!el||!rel)return;
@@ -165,7 +183,7 @@ function renderDirectionalGraph(){
     rows.map(r=>{
       const cls=alignmentClass(r.alignment),pos=alignmentPos(r.alignment);
       return '<div class="cf-row '+cls+'">'+
-        '<div class="cf-name"><b>'+esc(r.label||r.layer_key)+'</b><span>'+esc(r.detail||"")+'</span></div>'+
+        '<div class="cf-name"><b>'+esc(r.label||r.layer_key)+'</b><span>'+esc(r.detail||"")+'</span><small class="cf-age">'+esc(cfFreshness(r.layer_key))+'</small></div>'+
         '<div class="cf-track"><i class="cf-mid"></i><i class="cf-dot" style="left:'+pos+'%"></i></div>'+
         '<div class="cf-value">'+esc(directionalValue(r))+'</div>'+
         '<div class="cf-status">'+esc(alignmentLabel(r.alignment))+'</div>'+
