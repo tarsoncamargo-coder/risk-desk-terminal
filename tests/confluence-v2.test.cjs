@@ -32,7 +32,10 @@ check("Post semantic but no post price window remains pending",()=>assert.equal(
 const preWindow={event_id:"EV",window:"LIVE",product_status:"LEITURA_DISPONIVEL",as_of_utc:time(t0+6*60000)};
 check("LIVE snapshot not treated as observed POST",()=>assert.equal(phase(full,sem,[preWindow],t0+7*60000).mode,"WAIT_POST_MARKET"));
 const postWindow={event_id:"EV",window:"POST5",product_status:"LEITURA_DISPONIVEL",as_of_utc:time(t0+6*60000)};
-check("Observed prospective POST5 allows confirmation map",()=>{const s=phase(full,sem,[postWindow],t0+7*60000);assert.equal(s.mode,"POST_CONFIRMATION");assert.equal(s.tab,"event");});
+check("POST window alone is insufficient without matching cross-asset matrix",()=>assert.equal(phase(full,sem,[postWindow],t0+7*60000).mode,"WAIT_POST_MARKET"));
+const postMatrix=[{event_id:"EV",market_window:"POST5",product_status:"LEITURA_DISPONIVEL",raw_value:-0.4,alignment:"ALIGNED"}];
+check("Actual post-event matrix plus POST window enables confirmation",()=>{const s=E.eventState(full,sem,[postWindow],t0+7*60000,postMatrix);assert.equal(s.mode,"POST_CONFIRMATION");assert.equal(s.tab,"event");});
+check("Old LIVE matrix never counts as post-reaction",()=>assert.equal(E.eventState(full,sem,[postWindow],t0+7*60000,postMatrix.map(r=>({...r,market_window:"LIVE"}))).mode,"WAIT_POST_MARKET"));
 check("Stale semantic timestamp rejected",()=>assert.equal(phase(full,{...sem,updated_at:time(t0-10000)},[postWindow],t0+7*60000).mode,"WAIT_SEMANTIC"));
 const rows=[
  {layer_key:"NQ",observed_direction:"DOWN",raw_value:-0.3,market_window:"LIVE",product_status:"LEITURA_DISPONIVEL"},
