@@ -61,7 +61,7 @@
       '</div>'+
       '<div class="opt-levels">'+levels.map(x=>'<div class="opt-level"><span>'+html(x[0])+'</span><b>'+html(fmtPrice(a,x[1]))+'</b></div>').join("")+'</div>'+
       '<div class="opt-warnings">'+(warnings||'<div class="opt-warning opt-good">Parser sem alertas críticos para este snapshot.</div>')+'</div>'+
-      '<div class="opt-source">Parser '+html(r.parserVersion||"OPTIONS_V1")+" · Pricing "+fmtInt(quality.pricingRows)+" strikes · OI "+fmtInt(quality.oiRows)+" strikes · GEX "+fmtInt(quality.matchedStrikes)+" strikes coincidentes</div>';
+      '<div class="opt-source">Parser '+html(r.parserVersion||"OPTIONS_V1")+' · Pricing '+fmtInt(quality.pricingRows)+' strikes · OI '+fmtInt(quality.oiRows)+' strikes · GEX '+fmtInt(quality.matchedStrikes)+' strikes coincidentes</div>';
   }
   function card(k,v,s){
     return '<div class="opt-card"><div class="k">'+html(k)+'</div><div class="v">'+html(v)+'</div><div class="s">'+html(s||"")+'</div></div>';
@@ -102,16 +102,16 @@
       parserVersion:row.parser_version||"OPTIONS_V1",
       asset:a,assetLabel:cfg(a).label,
       series:row.series_short,
-      referencePrice:Number(row.reference_price),
-      atmStrike:Number(row.atm_strike),
-      atmIvPct:Number(row.atm_iv_pct),
+      referencePrice:n(row.reference_price),
+      atmStrike:n(row.atm_strike),
+      atmIvPct:n(row.atm_iv_pct),
       atmCallDelta:null,atmPutDelta:null,
-      dteDays:Number(row.dte_days),
-      dteMinutes:Number(row.dte_days)*1440,
-      dp1:Number(row.dp1),dp1Tick:Core.roundToTick(Number(row.dp1),cfg(a).tick),
+      dteDays:n(row.dte_days),
+      dteMinutes:row.dte_days==null?null:Number(row.dte_days)*1440,
+      dp1:n(row.dp1),dp1Tick:row.dp1==null?null:Core.roundToTick(Number(row.dp1),cfg(a).tick),
       levels:{
-        p1:{tick:Number(row.dp_p1)},p2:{tick:Number(row.dp_p2)},p3:{tick:Number(row.dp_p3)},
-        m1:{tick:Number(row.dp_m1)},m2:{tick:Number(row.dp_m2)},m3:{tick:Number(row.dp_m3)}
+        p1:{tick:n(row.dp_p1)},p2:{tick:n(row.dp_p2)},p3:{tick:n(row.dp_p3)},
+        m1:{tick:n(row.dp_m1)},m2:{tick:n(row.dp_m2)},m3:{tick:n(row.dp_m3)}
       },
       cwC:row.cw_c==null?null:Number(row.cw_c),cwCallOi:row.quality?.cwCallOi||null,
       pwC:row.pw_c==null?null:Number(row.pw_c),pwPutOi:row.quality?.pwPutOi||null,
