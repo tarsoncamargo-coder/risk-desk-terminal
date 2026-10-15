@@ -33,7 +33,7 @@ KEY = os.environ.get("RISKDESK_SUPABASE_SECRET_KEY", "").strip()
 POLL_SECONDS = 15
 
 REQUIRED = (
-    "bar_timestamp_utc", "asset", "contract", "close_price",
+    "bar_timestamp_utc", "asset", "contract", "open_price", "close_price",
     "volume", "source", "nt_observed_at_utc"
 )
 
@@ -104,8 +104,11 @@ def read_new_rows(state: dict) -> list[dict]:
         if identity in dedup:
             continue
         dedup.add(identity)
+        opening = float(row["open_price"])
         close = float(row["close_price"])
         volume = float(row["volume"]) if row["volume"].strip() else None
+        if not math.isfinite(opening) or not (100 < opening < 100000):
+            continue
         if not math.isfinite(close) or not (100 < close < 100000):
             continue
         if volume is not None and (not math.isfinite(volume) or volume < 0):
@@ -115,6 +118,7 @@ def read_new_rows(state: dict) -> list[dict]:
             "asset": ASSET,
             "contract": contract,
             "source": SOURCE,
+            "open_price": opening,
             "close_price": close,
             "volume": volume,
             "nt_observed_at_utc": observed_ts.isoformat(),
