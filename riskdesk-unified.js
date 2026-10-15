@@ -9,7 +9,8 @@ const URLS={
  health:PREFIX+"riskdesk-j14a-health-panel",
  bias:PREFIX+"riskdesk-j14c-continuous-context",
  zq:PREFIX+"riskdesk-j14e-zq-calendar-weighted",
- official:PREFIX+"riskdesk-j14g-official-macro-releases"
+ official:PREFIX+"riskdesk-j14g-official-macro-releases",
+ sigma:PREFIX+"riskdesk-j14k-nq-realized-sigma"
 };
 const IDS=["rdUnifiedPulse","rdUnifiedMacro","rdUnifiedNasdaq","rdUnifiedEvent","rdUnifiedArchive","rdUnifiedProject"];
 const TZ="America/Sao_Paulo";
@@ -151,6 +152,37 @@ function viewBias(context){
   coverage:c?String(c.fresh_sources)+" / "+String(c.total_sources):"—",
   sigma:c?.sigma_quality||"SEM LEITURA",time:c?.assessed_at_utc||null};
 }
+function sigmaResearch(D){
+ const s=D.sigma?.data;
+ const age=elapsedMin(s?.source_minute_utc);
+ const valid=D.sigma?.status==="RESEARCH_QUALITY_PASS_MINUTE_SNAPSHOT"&&
+  age!==null&&age>=-2&&age<=5&&s?.contiguous_returns_15m===15&&s?.contiguous_returns_60m===60;
+ return {valid:!!valid,s:valid?s:null,age};
+}
+function sigmaSummary(D){
+ const x=sigmaResearch(D);
+ return x.valid?"±"+num(x.s.sigma_15m_points,2)+" / ±"+num(x.s.sigma_60m_points,2)+" pts":
+  "Indisponível";
+}
+function sigmaDetail(D){
+ const x=sigmaResearch(D);
+ return x.valid?"15m "+num(x.s.sigma_15m_pct,4)+"% · 60m "+num(x.s.sigma_60m_pct,4)+"% · "+
+  shortText(x.s.volatility_regime)+" · "+fmtDate(x.s.source_minute_utc):
+  "Amostras M1 incompletas ou atrasadas. Sem preenchimento artificial.";
+}
+function sigmaAllRows(root,D){
+ const x=sigmaResearch(D);
+ if(!x.valid){note(root,"Sigma realizada NQ indisponível: fonte antiga, lacunas nos minutos ou falha da auditoria.","alert");return;}
+ const v=x.s;
+ grid(root,[5,15,30,60].map(m=>({
+  label:"σ realizada · "+m+" minutos",value:"±"+num(v["sigma_"+m+"m_points"],2)+" pts",
+  detail:num(v["sigma_"+m+"m_pct"],4)+"% · referência "+fmtDate(v.source_minute_utc)
+ })));
+ note(root,"Regime: "+shortText(v.volatility_regime)+
+  " · Retornos consecutivos: "+v.contiguous_returns_60m+"/60. "+
+  "Preços amostrados nos primeiros segundos do minuto: NÃO são fechamentos M1 certificados. "+
+  "Estimativa de volatilidade, não IV/VXN, DP de opções, alvo ou probabilidade.");
+}
 function showPulse(D){
  const root=$("rdUnifiedPulse");if(!root)return;
  const b=viewBias(D.bias);
@@ -167,7 +199,7 @@ function showPulse(D){
    (a.diagnostic_status==="RECENT_CME_MARKET_BAR"||
    (a.diagnostic_status==="MT5_RECENT_FORMULA_VERIFIED_SHADOW"&&recent(a.last_market_ts_utc,2)))).length+"/3 atualizados",
    detail:"ZT/ZN são futuros, não taxas 2Y/10Y; MT5 ainda Shadow."},
-  {label:"VXN / volatilidade",value:labelAsset(vx),detail:"VXN é implícita; sigma realizada do NQ é separada."}
+  {label:"Sigma NQ 15m / 60m",value:sigmaSummary(D),detail:sigmaDetail(D)}
  ]);
  note(root,"Leitura LIVE: "+(nq?labelAsset(nq):"NQ indisponível")+
   ". PPI oficial "+(official?num(official.actual_num,1)+"% capturado "+fmtDate(official.first_observed_at_utc):"ainda não disponível nesta fonte")+
@@ -205,7 +237,7 @@ function showMacro(D){
  grid(root,[
   {label:"Viés NQ",value:b.value,detail:b.reason,clas:statusClass(b.value)},
   {label:"Cobertura recente",value:b.coverage,detail:"Das quatro fontes NQ, ZT, ZN e DXY MT5"},
-  {label:"Sigma NQ",value:shortText(b.sigma),detail:"Volatilidade realizada, não VXN nem DP de opções."},
+  {label:"Sigma NQ 15m / 60m",value:sigmaSummary(D),detail:sigmaDetail(D)},
   {label:"Política monetária",value:z?"ZQ teórico · "+(String(z.month_first).slice(5,7))+"/"+String(z.month_first).slice(0,4):"Aguardando",
    detail:z?"Manutenção: "+num(z.flat,3)+"; -0,25 p.p.: "+num(z.cut25,3)+"; +0,25 p.p.: "+num(z.hike25,3):
    "Taxa oficial e cenários pendentes"}
@@ -219,6 +251,7 @@ function showMacro(D){
   t.append(left,right);list.append(t);
  }
  root.append(list);
+ sigmaAllRows(root,D);
  note(root,"ZQ sintético = estimativa baseada na EFFR diária e hipóteses de FOMC; ZQ negociado = expectativa de mercado apenas se atualizado. "+
   "VXN é a volatilidade implícita do NDX; a consulta atrasada não vira VXN LIVE. O VIX é secundário. Nenhum desses indicadores auxiliares altera o viés J14C.");
  external(root,[
@@ -235,10 +268,11 @@ function showNasdaq(D){
   {label:"Viés contextual",value:b.value,detail:b.reason,clas:statusClass(b.value)},
   {label:"Confluência macro 15 min",value:(c.bullish_macro_factors??"—")+" altistas · "+(c.bearish_macro_factors??"—")+" baixistas",
    detail:"É contagem de fatores, não probabilidade."},
-  {label:"Sigma realizada",value:shortText(b.sigma),detail:"15/60 minutos, exige candles NQ consecutivos."},
+  {label:"Sigma NQ 15m / 60m",value:sigmaSummary(D),detail:sigmaDetail(D)},
   {label:"Integridade NQ / DXY",value:labelAsset(nq)+" / "+labelAsset(dxy),
    detail:"Não inferir direção a partir de um estado neutro por dados insuficientes."}
  ]);
+ sigmaAllRows(root,D);
  note(root,"Estado atual "+(b.qualified?"é uma leitura contextual de pesquisa validada para fontes do J14C.":
   "NÃO permite inferir tendência: pelo menos uma condição de dados ou sigma não passou.")+
   " O painel de opções (PR, DP, GF, CW, PW) está separado; não integra automaticamente o score.");
@@ -327,9 +361,9 @@ async function update(){
  if(busy||document.visibilityState==="hidden")return;
  busy=true;
  try{
- const [h,b,z,o,p,m]=await Promise.allSettled([
+ const [h,b,z,o,p,m,s]=await Promise.allSettled([
   fetchJson(URLS.health),fetchJson(URLS.bias),fetchJson(URLS.zq),
-  fetchJson(URLS.official),fetchProgress(),fetchManifest()
+  fetchJson(URLS.official),fetchProgress(),fetchManifest(),fetchJson(URLS.sigma)
  ]);
  const data={
   health:h.status==="fulfilled"&&Array.isArray(h.value?.rows)?h.value:null,
@@ -337,7 +371,8 @@ async function update(){
   zq:z.status==="fulfilled"&&Array.isArray(z.value?.rows)?z.value:null,
   official:o.status==="fulfilled"&&Array.isArray(o.value?.events)?o.value:null,
   progress:p.status==="fulfilled"?p.value:null,
-  manifest:m.status==="fulfilled"?m.value:null
+  manifest:m.status==="fulfilled"?m.value:null,
+  sigma:s.status==="fulfilled"&&s.value?.data?s.value:null
  };
  if(data.health&&data.bias)showPulse(data);else missing($("rdUnifiedPulse"),"Radar contínuo · aguarde fontes LIVE");
  if(data.health&&data.bias)showMacro(data);else missing($("rdUnifiedMacro"),"Leitura macro · dados indisponíveis");
