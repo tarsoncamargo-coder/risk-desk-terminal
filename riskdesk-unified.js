@@ -172,6 +172,13 @@ function showPulse(D){
  note(root,"Leitura LIVE: "+(nq?labelAsset(nq):"NQ indisponível")+
   ". PPI oficial "+(official?num(official.actual_num,1)+"% capturado "+fmtDate(official.first_observed_at_utc):"ainda não disponível nesta fonte")+
   "; a captura pós-divulgação não comprova primeira publicação nem alimenta GEN1/GEN2.");
+ if(D.progress){
+  const p=D.progress;
+  note(root,"PROGRESSO DO RISK DESK · "+num(p.clean_v8_records)+" eventos históricos · "+
+   num(p.calendar_j13_events)+" eventos no calendário oficial · "+num(p.health_diagnostic_items)+
+   " verificações de saúde · "+num(p.j14c_shadow_samples)+" leituras J14C armazenadas. "+
+   "Para conferir pendências e validações abra a aba Sistema.");
+ }
  const links=elt("div","rd-orch__links");
  for(const t of [["macro","Detalhes macro"],["nasdaq","Análise Nasdaq"],["evento","Eventos"],["historico","Histórico CLEAN"]]){
   const b=elt("button",null,t[1]);b.type="button";b.addEventListener("click",()=>{
