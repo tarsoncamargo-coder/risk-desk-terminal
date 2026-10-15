@@ -1,0 +1,36 @@
+/* J14I — cards de leitura e desenvolvimento sem poluir os motores existentes */
+.rd-orch{border:1px solid #304252;background:linear-gradient(125deg,#13202b 0%,#10161e 62%,#0f1720 100%);border-radius:10px;padding:16px;margin:14px 0}
+.rd-orch--subtle{background:#111820;border-color:#293845}
+.rd-orch__head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:13px}
+.rd-orch__title{font-size:14px;letter-spacing:.015em;font-weight:790;color:#e6f2f5}
+.rd-orch__subtitle{color:#97abb7;font-size:11px;margin-top:5px;line-height:1.5}
+.rd-orch__stamp{font-size:10px;color:#9cb6c3;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rd-orch__grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.rd-orch__grid--three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.rd-orch__tile{padding:12px;border:1px solid #2a3a46;border-radius:7px;background:#0c151d;min-height:90px}
+.rd-orch__key{color:#9bafbc;font-size:10px;letter-spacing:.045em;margin-bottom:7px}
+.rd-orch__value{color:#f1f6fb;font-size:15px;font-weight:770;word-wrap:break-word;line-height:1.3}
+.rd-orch__value--large{font-size:23px;letter-spacing:.01em}
+.rd-orch__detail{font-size:10.5px;color:#a7bac5;line-height:1.5;margin-top:7px;overflow-wrap:anywhere}
+.rd-orch__positive{color:#67dca8}
+.rd-orch__negative{color:#f3a49d}
+.rd-orch__warning{color:#f5cc80}
+.rd-orch__muted{color:#a4bdca}
+.rd-orch__note{color:#a9bbc6;border-top:1px solid #293a47;margin-top:12px;padding-top:11px;font-size:11px;line-height:1.6}
+.rd-orch__note--alert{border-top-color:#745c37;color:#ffcf82}
+.rd-orch__links{display:flex;gap:11px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.rd-orch__links a,.rd-orch__links button{border:1px solid #375067;background:#101e2a;color:#99d5ec;border-radius:6px;padding:8px 11px;text-decoration:none;cursor:pointer;font:inherit;font-size:11px}
+.rd-orch__links a:hover,.rd-orch__links button:hover{background:#17324a;border-color:#5195b7}
+.rd-orch__list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.rd-orch__line{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border:1px solid #283844;background:#0f171f;padding:10px;border-radius:6px;min-height:65px}
+.rd-orch__line-title{font-size:12px;font-weight:720;color:#e0edf4}
+.rd-orch__line-content{font-size:11px;color:#abc1cc;line-height:1.4;max-width:65%;text-align:right}
+.rd-orch__mini{font-size:10px;color:#93aab6;line-height:1.3}
+.rd-orch__track{border-left:2px solid #435969;padding:9px 12px;margin-bottom:7px;background:#0d161f;font-size:11px;line-height:1.5}
+.rd-orch__track strong{display:block;color:#e0eef6;margin-bottom:3px;font-size:12px}
+.rd-orch__track--ok{border-left-color:#4faa84}
+.rd-orch__track--pending{border-left-color:#c9a15d}
+.rd-orch__track--mixed{border-left-color:#588fae}
+.rd-orch__foot{font-size:10px;color:#859ba8;margin-top:12px}
+@media(max-width:1030px){.rd-orch__grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-orch__grid--three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.rd-orch{padding:12px;margin:10px 0}.rd-orch__grid,.rd-orch__grid--three,.rd-orch__list{grid-template-columns:1fr}.rd-orch__head{gap:6px}.rd-orch__line-content{max-width:58%}}
