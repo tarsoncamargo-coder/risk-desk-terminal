@@ -1,0 +1,14 @@
+/* Card compacto, isolado da logica de trading. */
+.rd-mt5-header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.rd-mt5-header .ct{margin-bottom:3px}
+.rd-mt5-note,.rd-mt5-footer{color:var(--muted);font-size:11px}
+.rd-mt5-grid{display:grid;grid-template-columns:1.25fr repeat(6,minmax(0,1fr));gap:7px;margin-top:10px}
+.rd-mt5-item{min-width:0;padding:9px 10px;border:1px solid #26303c;border-radius:5px;background:#0c1219;display:flex;flex-direction:column;gap:3px}
+.rd-mt5-dxy{border-color:#28697a;background:#0c2027}
+.rd-mt5-label{font-size:10px;color:#a6b9c6;font-weight:800;letter-spacing:.035em}
+.rd-mt5-value{font-size:17px;font-weight:850;letter-spacing:.015em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.rd-mt5-stale{color:#ac9b7b}
+.rd-mt5-item small{color:var(--muted);font-size:10px}
+.rd-mt5-footer{margin-top:8px}
+@media(max-width:1000px){.rd-mt5-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:620px){.rd-mt5-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-mt5-value{font-size:15px}}
