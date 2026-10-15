@@ -53,7 +53,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <section class="panel">
 <h2>QUALIDADE DAS FONTES</h2>
 <div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
-<div><div class="source"><div><strong>ZQ sintético · EFFR Fed NY</strong><div class="sub">Referência TEÓRICA DIÁRIA; o ZQ CME está indisponível</div></div><div class="right" id="zq-theoretical">Aguardando EFFR oficial… Sem probabilidades e fora do viés V1.</div></div>
+<div><div class="source"><div><strong>ZQ sintético · EFFR Fed NY</strong><div class="sub">Ponderação diária, feriados Fed, cenários 0/±25bp · <a href="https://www.cmegroup.com/markets/interest-rates/stirs/30-day-federal-fund.settlements.html" target="_blank" rel="noopener noreferrer">Ver ajustes CME</a> · <a href="https://www.cmegroup.com/market-data/daily-bulletin.html" target="_blank" rel="noopener noreferrer">Boletim CME</a></div></div><div class="right" id="zq-theoretical">Aguardando EFFR oficial… Sem probabilidades e fora do viés V1.</div></div>
 <div class="source"><div><strong>VXN / VIX</strong><div class="sub">Volatilidade implícita</div></div><div class="right">Não entram no viés enquanto não houver fonte confiável e atual</div></div>
 <div class="source"><div><strong>PR / DP / GF / CW / PW</strong><div class="sub">Camada de opções separada</div></div><div class="right">Não modificados e não misturados com sigma realizada</div></div>
 </div></div>
@@ -64,7 +64,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <script>
 "use strict";
 const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14c-continuous-context";
-const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14d-zq-theoretical-public";
+const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14e-zq-calendar-weighted";
 const el=id=>document.getElementById(id);
 const text=(id,value)=>{el(id).textContent=String(value??"—")};
 const labels={
@@ -135,16 +135,23 @@ async function refreshZqTheory(){
  const target=el("zq-theoretical");
  try{
   const r=await fetch(zqTheoreticalEndpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
-  if(!r.ok)throw Error("Fonte EFFR indisponível");
+  if(!r.ok)throw Error("Referência diária EFFR não disponível");
   const v=await r.json();
-  if(!v.effr||!v.scenarios||v.status!=="THEORETICAL_POLICY_SCENARIO_NOT_LIVE"){
-    throw Error("Taxa diária antiga ou cenários ainda indisponíveis");
-  }
-  const rate=Number(v.effr.percent).toFixed(2).replace(".",",");
-  const fmt=n=>Number(n).toFixed(3).replace(".",",");
-  target.textContent="Contrato "+v.contract+" · EFFR "+rate+"% (data "+v.effr.effective_date+") · Manutenção: "+fmt(v.scenarios.flat)+" · Corte hipotético 0,25 p.p.: "+fmt(v.scenarios.cut25)+" · Alta hipotética 0,25 p.p.: "+fmt(v.scenarios.hike25)+". SEM cotação CME, SEM FedWatch, SEM probabilidade e FORA da confluência J14C.";
+  if(v.status!=="CALENDAR_WEIGHTED_THEORETICAL_ONLY"||!Array.isArray(v.rows)||v.rows.length<1)
+   throw Error("A referência oficial EFFR está antiga ou incompleta");
+  const fmt=n=>Number(n).toLocaleString("pt-BR",{minimumFractionDigits:4,maximumFractionDigits:4});
+  const parts=v.rows.map(x=>{
+   const month=String(x.month_first).slice(5,7)+"/"+String(x.month_first).slice(0,4);
+   return month+": manutenção "+fmt(x.flat)+", corte −0,25 p.p. "+fmt(x.cut25)+
+      ", alta +0,25 p.p. "+fmt(x.hike25)+" ("+x.days_in_month+" dias: "+
+      x.direct_effr_days+" oficiais, "+x.weekend_carry_days+" fins de semana, "+
+      x.fed_holiday_carry_days+" feriados e "+x.hypothetical_days+" hipotéticos)";
+  });
+  target.textContent="PONDERAÇÃO POR TODOS OS DIAS · EFFR disponível até "+v.rows[0].latest_effr_effective_date+
+   " · "+parts.join(" | ")+" · FOMC "+(v.rows[0].related_fomc_end||"não vinculado")+
+   " (calendário: "+v.rows[0].fomc_date_status+"). Não é settlement CME, FedWatch, preço LIVE ou probabilidade de política monetária.";
  }catch(_){
-  target.textContent="ZQ real indisponível. A referência teórica da taxa Fed NY também não está disponível ou ficou antiga; sem substituição automática.";
+  target.textContent="ZQ real desatualizado e taxa ponderada indisponível ou antiga. Sem preenchimento automático como cotação CME.";
  }
 }
 el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();});
