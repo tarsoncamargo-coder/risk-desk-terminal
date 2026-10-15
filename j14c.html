@@ -52,6 +52,13 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 </div>
 <section class="panel" aria-label="Sigma realizada do Nasdaq">
 <h2>SIGMA REALIZADA NQ — 5, 15, 30 E 60 MINUTOS</h2>
+<div class="info" style="margin:12px 0">Os pontos de sigma só fazem sentido junto com um PR fixo, o movimento acumulado desde esse PR e os níveis PR ±σ. O PR da sessão fica congelado; a sigma móvel varia, mas as bandas do checkpoint serão registradas separadamente, sem deslocamento.</div>
+<div class="data" style="margin:10px 0 18px">
+ <div class="stat"><div class="label">NQ · PR da sessão</div><div class="big" id="pr-reference">Aguardando fixação</div><div class="sub" id="pr-reference-time">Abertura 19h Brasília ou NY 09h30 ET; dado protegido na página pública.</div></div>
+ <div class="stat"><div class="label">Movimento desde PR</div><div class="big" id="pr-distance">—</div><div class="sub" id="pr-distance-sub">Distância do último preço observado; verificar frescor.</div></div>
+ <div class="stat"><div class="label">Percurso relativo a σ 15m / σ 60m</div><div class="big" id="pr-multiple">—</div><div class="sub">Não é probabilidade de rompimento nem faixa projetada da sessão.</div></div>
+ <div class="stat"><div class="label">OURO · PR / σ</div><div class="big" id="gold-pr">Sem fonte M1</div><div class="sub">Aguardar XAU/MGC real; não fabricar cotação nem misturar contratos.</div></div>
+</div>
 <div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">
 <div class="stat"><div class="label">σ 5 minutos</div><div class="big" id="sigma-5">—</div><div class="sub" id="sigmap-5">Aguardando dados</div></div>
 <div class="stat"><div class="label">σ 15 minutos</div><div class="big" id="sigma-15">—</div><div class="sub" id="sigmap-15">Aguardando dados</div></div>
@@ -78,6 +85,7 @@ const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j
 const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14e-zq-calendar-weighted";
 const sourceHealthEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14a-health-panel";
 const nqSigmaEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14k-nq-realized-sigma";
+const sigmaReferenceEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14l-sigma-reference-context";
 const el=id=>document.getElementById(id);
 const text=(id,value)=>{el(id).textContent=String(value??"—")};
 const labels={
@@ -143,6 +151,43 @@ async function refresh(){
  el("primary").replaceChildren(source("Nasdaq NQ",c.nq_source_status),source("Treasury 2 anos ZT",c.zt_source_status),source("Treasury 10 anos ZN",c.zn_source_status),source("DXY sintético MT5",c.dxy_source_status));
  }catch(error){unavailable(error instanceof Error?error.message:"Consulta falhou");}
  finally{btn.disabled=false;}
+}
+async function refreshReference(){
+ const asBR=v=>new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(v));
+ try{
+  const response=await fetch(sigmaReferenceEndpoint,{method:"GET",headers:{"Accept":"application/json"},cache:"no-store",signal:AbortSignal.timeout(9000)});
+  if(!response.ok)throw Error("Referência indisponível");
+  const data=await response.json();
+  if(!Array.isArray(data.data))throw Error("Sem dados");
+  const nq=data.data.find(x=>x.asset==="NQ"&&x.session_code==="OP_DAY_19_BRT");
+  const gold=data.data.find(x=>x.asset==="MGC"||x.asset==="XAU");
+  if(nq){
+   text("pr-reference","PR CONGELADO");
+   text("pr-reference-time","Amostra: "+asBR(nq.reference_timestamp_utc)+
+    " (BRT). Preço exato no armazenamento privado; sem redistribuição de cotação CME neste site público.");
+   const d=Number(nq.last_observed_move_pts),pct=Number(nq.last_observed_move_pct);
+   if(!Number.isFinite(d)||!Number.isFinite(pct))throw Error("Movimento inválido");
+   const fmt=(v,n)=>v.toLocaleString("pt-BR",{minimumFractionDigits:n,maximumFractionDigits:n});
+   text("pr-distance",(d>0?"+":"")+fmt(d,2)+" pts");
+   text("pr-distance-sub",(pct>0?"+":"")+fmt(pct,4)+"% desde abertura · "+
+    (nq.status==="REFERENCE_LOCKED_FRESH_PRICE"?"Preço recente":"ÚLTIMO PREÇO ANTIGO — não LIVE")+
+    " · "+asBR(nq.market_timestamp_utc));
+   const a=nq.travel_sigma15,b=nq.travel_sigma60;
+   text("pr-multiple",nq.status==="REFERENCE_LOCKED_FRESH_PRICE"&&a!=null&&b!=null?
+     fmt(Number(a),2)+"σ / "+fmt(Number(b),2)+"σ":"Indisponível");
+  }else{
+   text("pr-reference","Ainda sem PR válido");
+   text("pr-reference-time","Abertura de 19h BRT ou 09h30 NY: janela original de 3 min; sem preço não haverá PR retroativo disfarçado de LIVE.");
+   text("pr-distance","—");text("pr-distance-sub","Não há movimento calculável sem referência.");
+   text("pr-multiple","—");
+  }
+  text("gold-pr",gold?"PR registrado · "+(gold.status==="REFERENCE_LOCKED_FRESH_PRICE"?"atual":"preço atrasado"):
+    "Fonte ouro ausente");
+ }catch(_){
+  text("pr-reference","Sem referência disponível");text("pr-reference-time","Não substituir por preço móvel.");
+  text("pr-distance","—");text("pr-distance-sub","Dado sem validação.");
+  text("pr-multiple","—");text("gold-pr","Aguardando XAU/MGC");
+ }
 }
 async function refreshNqSigma(){
  const note=el("sigma-note");
@@ -227,10 +272,11 @@ async function refreshVxnVixQuality(){
   el("zq-live-status").textContent="ZQ negociado: sem diagnóstico atual validado. Não substituir pela taxa EFFR teórica.";
  }
 }
-el("refresh").addEventListener("click",()=>{refresh();refreshNqSigma();refreshZqTheory();refreshVxnVixQuality();});
-refresh();refreshNqSigma();refreshZqTheory();refreshVxnVixQuality();
+el("refresh").addEventListener("click",()=>{refresh();refreshNqSigma();refreshReference();refreshZqTheory();refreshVxnVixQuality();});
+refresh();refreshNqSigma();refreshReference();refreshZqTheory();refreshVxnVixQuality();
 setInterval(refresh,120000);
 setInterval(refreshNqSigma,120000);
+setInterval(refreshReference,120000);
 setInterval(refreshZqTheory,300000);
 setInterval(refreshVxnVixQuality,300000);
 </script>
