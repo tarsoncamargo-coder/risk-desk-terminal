@@ -54,7 +54,8 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <h2>QUALIDADE DAS FONTES</h2>
 <div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
 <div><div class="source"><div><strong>ZQ sintético · EFFR Fed NY</strong><div class="sub">Ponderação diária, feriados Fed, cenários 0/±25bp · <a href="https://www.cmegroup.com/markets/interest-rates/stirs/30-day-federal-fund.settlements.html" target="_blank" rel="noopener noreferrer">Ver ajustes CME</a> · <a href="https://www.cmegroup.com/market-data/daily-bulletin.html" target="_blank" rel="noopener noreferrer">Boletim CME</a></div></div><div class="right" id="zq-theoretical">Aguardando EFFR oficial… Sem probabilidades e fora do viés V1.</div></div>
-<div class="source"><div><strong>VXN / VIX · qualidade da fonte</strong><div class="sub">VXN oficial: <a href="https://fred.stlouisfed.org/series/VXNCLS" target="_blank" rel="noopener noreferrer">fechamento diário FRED/Cboe</a> · Intradiário: Yahoo sem garantia de tempo real</div></div><div class="right" id="vxn-vix-quality">Verificando data de mercado e atraso…</div></div>
+<div class="source"><div><strong>ZQ negociado CME · expectativas do mercado</strong><div class="sub">Leitura separada da EFFR diária e do ZQ teórico; somente quando o contrato estiver atualizado</div></div><div class="right" id="zq-live-status">Consultando a última atualização real do ZQ…</div></div>
+<div class="source"><div><strong>VXN primário / VIX opcional · qualidade da fonte</strong><div class="sub">VXN oficial: <a href="https://fred.stlouisfed.org/series/VXNCLS" target="_blank" rel="noopener noreferrer">fechamento diário FRED/Cboe</a> · Intradiário: Yahoo sem garantia de tempo real</div></div><div class="right" id="vxn-vix-quality">Verificando data de mercado e atraso…</div></div>
 <div class="source"><div><strong>PR / DP / GF / CW / PW</strong><div class="sub">Camada de opções separada</div></div><div class="right">Não modificados e não misturados com sigma realizada</div></div>
 </div></div>
 </section>
@@ -162,6 +163,15 @@ async function refreshVxnVixQuality(){
   if(!r.ok)throw Error("Fonte de qualidade indisponível");
   const d=await r.json();
   if(!Array.isArray(d.rows))throw Error("Sem estados verificados");
+  const q=d.rows.find(x=>x.item_key==="ASSET_ZQ");
+  const qt=el("zq-live-status");
+  if(q&&q.last_market_ts_utc){
+    const qAge=(Date.now()-Date.parse(q.last_market_ts_utc))/60000;
+    const qDate=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(q.last_market_ts_utc));
+    const eligible=Number.isFinite(qAge)&&qAge>=-2&&qAge<=15&&q.diagnostic_status==="RECENT_CME_MARKET_BAR";
+    qt.textContent=eligible?"Cotação ZQ CME recente em "+qDate+"; expectativas negociadas somente contexto até validação contratual.":
+      "Cotação ZQ CME NÃO atual: "+qDate+". O valor teórico da EFFR não substitui seu preço de mercado.";
+  }else{qt.textContent="ZQ CME sem cotação atual verificada; nenhuma expectativa intradiária calculada.";}
   const latest={};
   for(const asset of ["VXN","VIX"]){
    const a=d.rows.find(x=>x.item_key==="ASSET_"+asset);
@@ -175,6 +185,7 @@ async function refreshVxnVixQuality(){
   target.textContent=latest.VXN+" | "+latest.VIX+". VXN oficial diário disponível pelo FRED; sem VXN sintético por ausência de cadeia NDX 30 dias. Não compõem o viés de compra/venda.";
  }catch(_){
   target.textContent="VXN/VIX sem diagnóstico atual validado. Consulte a série diária VXNCLS. Sigma realizada do NQ continua separada; NÃO substitui o VXN.";
+  el("zq-live-status").textContent="ZQ negociado: sem diagnóstico atual validado. Não substituir pela taxa EFFR teórica.";
  }
 }
 el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();refreshVxnVixQuality();});
