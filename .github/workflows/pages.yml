@@ -31,6 +31,8 @@ jobs:
           node --check options-tab.js
           node --check collector/options-collector.mjs
           node --check riskdesk-unified.js
+          node --check riskdesk-gold.js
+          python -m py_compile pipeline/riskdesk_gold_uploader_j15.py
           node --check riskdesk-event-agenda.js
           node --check j14g-official-releases.js
           node --check j14h-volatility.js
