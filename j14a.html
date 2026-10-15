@@ -40,7 +40,7 @@ td:nth-child(5){max-width:480px;line-height:1.35}
 </style>
 </head>
 <body>
-<header><div class="top"><div><h1>RISK DESK <span class="accent">//</span> J14A · SAÚDE LIVE</h1><div class="small">NQ · ZQ · ZT · ZN · DXY · VIX · VXN</div></div>
+<header><div class="top"><div><h1>RISK DESK <span class="accent">//</span> J14A · SAÚDE LIVE</h1><div class="small">NQ · ZQ · ZT · ZN · DXY sintético MT5 · DXY Yahoo · VIX · VXN</div></div>
 <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
 <span class="badge">PESQUISA / CONTEXTO</span>
 <a class="link" href="./index.html">Terminal GitHub</a>
@@ -49,7 +49,7 @@ td:nth-child(5){max-width:480px;line-height:1.35}
 <div id="summary" role="status">Buscando estados da fonte de diagnóstico…</div>
 <section><h2>ATIVOS — COTAÇÃO X HORÁRIO DE RECEBIMENTO</h2><div class="scroll"><table><thead><tr><th>Ativo / origem</th><th>Condição</th><th>Idade da cotação</th><th>Horário Brasília</th><th>Interpretação</th></tr></thead><tbody id="assets"><tr><td colspan="5">Carregando…</td></tr></tbody></table></div></section>
 <section><h2>SISTEMA — BRIDGE, MARKET STATE, GEN1, GEN2 E ESCOPO</h2><div class="scroll"><table><thead><tr><th>Componente</th><th>Condição</th><th>Idade do heartbeat</th><th>Horário Brasília</th><th>Interpretação</th></tr></thead><tbody id="systems"><tr><td colspan="5">Carregando…</td></tr></tbody></table></div></section>
-<div class="footer">Quadro informativo independente da tela histórica do Lovable. O estado «Supabase conectado» verifica somente o banco, não a atualidade de cada mercado. Os horários de barras de mercado e de recebimento são distintos. Não há preço, recomendação, probabilidade de lucro ou autorização para trading. O Market State em AGUARDANDO fora da janela de evento não é falha por si só. O GEN2 permanece Shadow.</div>
+<div class="footer">O DXY sintético MT5/ActivTrades de seis pares é a primeira opção de pesquisa quando passar nos controles de fórmula e sincronização; Yahoo é comparativo atrasado. Isso NÃO muda o DXY usado pelo Market State/GEN1/GEN2. Quadro informativo independente da tela histórica do Lovable. O estado «Supabase conectado» verifica somente o banco, não a atualidade de cada mercado. Os horários de barras de mercado e de recebimento são distintos. Não há preço, recomendação, probabilidade de lucro ou autorização para trading. O Market State em AGUARDANDO fora da janela de evento não é falha por si só. O GEN2 permanece Shadow.</div>
 </main>
 <script>
 "use strict";
@@ -97,7 +97,7 @@ async function refresh(){
   const req=await fetch(ENDPOINT,{method:"GET",cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
   if(!req.ok)throw new Error("Fonte indisponível (HTTP "+req.status+")");
   const data=await req.json();
-  if(!Array.isArray(data.rows)||data.rows.length!==13)throw new Error("Snapshot incompleto");
+  if(!Array.isArray(data.rows)||data.rows.length<14||!data.rows.some(r=>r.item_key==="ASSET_DXY_MT5_SHADOW"))throw new Error("Snapshot incompleto (DXY MT5 ausente)");
   const age=(Date.now()-Date.parse(data.assessed_at_utc))/60000;
   const stale=age>MAX_AGE_MIN||age<(-2)||!Number.isFinite(age)||data.status==="SNAPSHOT_STALE_NOT_LIVE";
   summary.className=stale?"warn":"";
