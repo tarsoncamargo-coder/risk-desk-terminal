@@ -304,7 +304,17 @@
       net_gex:result.netGex,
       gamma_regime:result.gammaRegime,
       data_status:result.dataStatus,
-      quality:result.quality,
+      quality:{
+        ...(result.quality||{}),
+        atmCallDelta:result.atmCallDelta,
+        atmPutDelta:result.atmPutDelta,
+        bannerIvPct:result.bannerIvPct,
+        dp1Tick:result.dp1Tick,
+        cwCallOi:result.cwCallOi,
+        pwPutOi:result.pwPutOi,
+        matrixSeries:result.matrixSeries,
+        warnings:Array.isArray(result.warnings)?result.warnings:[]
+      },
       collected_at:collectedAt||new Date().toISOString(),
       parser_version:result.parserVersion
     };
