@@ -1,0 +1,18 @@
+{
+  "profileDir": ".quickstrike-profile",
+  "headless": false,
+  "maxOiPages": 30,
+  "waitAfterNavigationMs": 1800,
+  "assets": [
+    {
+      "asset": "MGC",
+      "pricingUrl": "COLE_AQUI_A_URL_DA_PRICING_SHEET_DO_GOLD",
+      "oiUrl": "COLE_AQUI_A_URL_DA_MATRIZ_OI_DO_GOLD"
+    },
+    {
+      "asset": "MNQ",
+      "pricingUrl": "COLE_AQUI_A_URL_DA_PRICING_SHEET_DO_NASDAQ",
+      "oiUrl": "COLE_AQUI_A_URL_DA_MATRIZ_OI_DO_NASDAQ"
+    }
+  ]
+}
