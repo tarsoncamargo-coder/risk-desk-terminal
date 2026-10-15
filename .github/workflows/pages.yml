@@ -21,6 +21,7 @@ jobs:
       - name: Validate JavaScript
         run: |
           node --check app.js
+          node --check market-visual-live.js
           node --check ui_v2.js
           node --check live-hoje.js
           node --check event-monitor.js
@@ -28,6 +29,7 @@ jobs:
           node --check cross-asset-core.js
           node tests/confluence-v2.test.cjs
           node tests/site-ui.test.cjs
+          node tests/market-visual-live.test.cjs
           node tests/mt5-shadow-hoje.test.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
