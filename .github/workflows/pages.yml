@@ -31,6 +31,7 @@ jobs:
           node --check options-tab.js
           node --check collector/options-collector.mjs
           node --check riskdesk-unified.js
+          node --check riskdesk-event-agenda.js
           node --check j14g-official-releases.js
           node --check j14h-volatility.js
           node tests/confluence-v2.test.cjs
