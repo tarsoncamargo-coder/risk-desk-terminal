@@ -27,10 +27,14 @@ const load=async()=>{
 };
 function drawOne(s,refs){
  const good=pass(s);
- set("goldStatus",good?"MGC · M1 VALIDADO PARA PESQUISA":"MGC · SEM LEITURA M1 ATUAL");
+ const warmup=s?.source_state==="MGC_NOT_60_CONSECUTIVE_M1_RETURNS"&&fresh(s.source_last_minute_utc);
+ set("goldStatus",good?"MGC · M1 VALIDADO PARA PESQUISA":warmup?"MGC · AQUECENDO SIGMA":"MGC · SEM LEITURA M1 ATUAL");
  set("goldDescription",good?"Fonte NinjaTrader · "+s.contract_month_label+
   " · último fechamento M1 "+clock(s.source_last_minute_utc)+" (BRT)":
-  "Aguardando o primeiro envio MGC ou a continuidade de 60 retornos M1 sem lacunas. Estado: "+(s?.source_state||"NO_GOLD_BARS_YET"));
+  warmup?"NinjaTrader conectado · "+Math.max(0,Number(s.n60)||0)+"/60 retornos M1 consecutivos · faltam "+
+  Math.max(0,60-(Number(s.n60)||0))+" retornos. Último M1: "+clock(s.source_last_minute_utc)+" (Brasília)."+
+  " Não mostrar σ antes de completar 60 retornos.":
+  "Aguardando dados MGC M1 frescos e completos. Estado: "+(s?.source_state||"NO_GOLD_BARS_YET"));
  for(const m of [5,15,30,60]){
   const v=s?.["sigma_"+m+"m_points"];
   set("goldSigma"+m,good&&valid(v)?"±"+n(v,2)+" pts":"—");
@@ -69,6 +73,7 @@ function drawOne(s,refs){
   const info=node("div",good?
    "σ15 ±"+n(s.sigma_15m_points,2)+" pts · σ60 ±"+n(s.sigma_60m_points,2)+" pts · "+
     String(s.volatility_regime).replaceAll("_"," "):
+   warmup?"MGC conectado · "+(Math.max(0,Number(s.n60)||0))+"/60 retornos consecutivos para liberar a sigma.": 
    "Sem MGC M1 recente; aguardando ponte NinjaTrader.","rd-orch__detail");
   mini.append(title,info);
  }
