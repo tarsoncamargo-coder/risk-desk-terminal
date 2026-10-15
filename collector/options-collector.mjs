@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import {createRequire} from "node:module";
+import {fileURLToPath} from "node:url";
 import {chromium} from "playwright";
 
 const require=createRequire(import.meta.url);
