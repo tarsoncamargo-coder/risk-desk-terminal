@@ -1,0 +1,4 @@
+collector/node_modules/
+collector/config.json
+collector/.quickstrike-profile/
+collector/out/
