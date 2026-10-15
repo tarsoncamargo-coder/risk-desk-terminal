@@ -1,35 +1,66 @@
 "use strict";
-// FX ActivTrades shadow: componente visual sem dependencias externas ou trading.
-const assert=require("node:assert/strict");
-const fs=require("node:fs");
-const path=require("node:path");
-const vm=require("node:vm");
-const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
-const src=fs.readFileSync(path.join(__dirname,"..","mt5-shadow-hoje.js"),"utf8");
-assert.ok(html.includes('mt5-shadow-hoje.js')&&html.includes('mt5-shadow-hoje.css'));
-assert.ok(!src.includes("live_market_minute")&&!src.includes("GEN2")&&!src.includes("tradeSignal"));
-assert.doesNotThrow(()=>new vm.Script(src));
-function el(){
-  return {innerHTML:"",textContent:"",className:"",
-    children:[],append(...xs){this.children.push(...xs);},
-    querySelector(){return null},appendChild(x){this.children.push(x)},
-    insertBefore(x){this.children.push(x)}
-  };
+// Teste local do card FX sem API externa, chave ou ordens.
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const path = require("node:path");
+const read = name => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
+const html = read("index.html"), source = read("mt5-shadow-hoje.js");
+assert.ok(html.includes('mt5-shadow-hoje.js') && html.includes('mt5-shadow-hoje.css'));
+assert.ok(!source.includes("live_market_minute") && !source.includes("RISKDESK_SUPABASE_SECRET_KEY"));
+assert.doesNotThrow(() => new vm.Script(source));
+
+async function scenario(rows) {
+  const elements = {};
+  function makeElement() {
+    let inner = "";
+    const node = { textContent: "", className: "", children: [],
+      append(...children) { this.children.push(...children); },
+      appendChild(child) { this.children.push(child); },
+      insertBefore(child) { this.children.push(child); },
+      querySelector(name) { return name === ".product-events" ? {} : null; },
+    };
+    Object.defineProperty(node, "innerHTML", {
+      get() { return inner; },
+      set(value) {
+        inner = value;
+        if (value.includes('id="rdMt5Status"')) {
+          ["rdMt5Pairs", "rdMt5Status", "rdMt5Time"].forEach(id => elements[id] = makeElement());
+        }
+      }
+    });
+    return node;
+  }
+  elements.hoje = makeElement();
+  const doc = { visibilityState: "visible", getElementById: id => elements[id] || null,
+    createElement: () => makeElement() };
+  const calls = [];
+  const ctx = { document: doc, setInterval(fn, ms) { calls.push(ms); },
+    api: async (table, query) => {
+      assert.equal(table, "riskdesk_mt5_fx_shadow");
+      assert.ok(query.includes("select=symbol,mid,as_of_utc,quality_status,source"));
+      return rows;
+    }, Date, Intl };
+  vm.runInNewContext(source,ctx);
+  await new Promise(done => setTimeout(done, 15));
+  assert.equal(elements.hoje.children.length, 1);
+  assert.equal(elements.rdMt5Pairs.children.length, 7);
+  assert.deepEqual(calls,[15000,5000]);
+  return elements;
 }
-async function test(rows,expected){
-  const registry={hoje:el()};
-  const doc={visibilityState:"visible",createElement(){return el()},getElementById(id){return registry[id]||null}};
-  const context={document:doc,setInterval(){},api:async()=>rows,Number,Date,Intl,console};
-  vm.runInNewContext(src,context);
-  await new Promise(resolve=>setTimeout(resolve,20));
-  const card=registry.hoje.children[0];assert.ok(card,"card must be mounted");
-  // innerHTML creates DOM children on browser; simulated lookup stubs below only exercise import.
-  assert.ok(card.innerHTML.includes("ActivTrades MT5")&&card.innerHTML.includes("rdMt5Pairs"));
-}
-const symbols=["DXY_SYNTH","EURUSD","USDJPY","GBPUSD","USDCAD","USDSEK","USDCHF"];
-(async()=>{
- await test([], "unavailable");
- const at=new Date().toISOString();
- await test(symbols.map(symbol=>({symbol,source:"MT5_ACTIVTRADES_SHADOW",mid:102,as_of_utc:at,quality_status:"RECENT"})), "recent");
- console.log("PASS mt5 shadow card: imports, isolated source, syntax, empty/recent responses");
-})().catch(e=>{console.error(e);process.exitCode=1;});
+(async () => {
+  const empty = await scenario([]);
+  assert.equal(empty.rdMt5Status.textContent, "AGUARDANDO COLETA");
+  assert.ok(empty.rdMt5Time.textContent.includes("nenhum valor ficticio"));
+  const symbols = ["DXY_SYNTH","EURUSD","USDJPY","GBPUSD","USDCAD","USDSEK","USDCHF"];
+  const stamp = new Date().toISOString();
+  const rows = symbols.map(symbol => ({symbol,source:"MT5_ACTIVTRADES_SHADOW",
+    mid:symbol==="DXY_SYNTH"?102.2:1.2,as_of_utc:stamp,quality_status:"RECENT"}));
+  const good = await scenario(rows);
+  assert.equal(good.rdMt5Status.textContent,"COTACOES RECENTES · SHADOW");
+  assert.ok(good.rdMt5Pairs.children[0].children[1].textContent.includes("102,2"));
+  const stale = await scenario(rows.map((row,i) => i===3 ? {...row,quality_status:"STALE"} : row));
+  assert.equal(stale.rdMt5Status.textContent, "DADOS PARCIAIS / ANTIGOS");
+  assert.ok(stale.rdMt5Pairs.children[3].children[2].textContent.includes("Atrasado"));
+  console.log("PASS: MT5 shadow vazio/recente/stale, 7 ativos, polling isolado");
+})().catch(error => { console.error(error); process.exitCode = 1; });
