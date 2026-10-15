@@ -39,6 +39,8 @@ const payload=Core.snapshotPayload(r,"TEST","2026-10-15T00:00:00Z");
 assert.equal(payload.asset,"MGC");
 assert.equal(payload.source_mode,"TEST");
 assert.equal(payload.reference_price,4127.3);
+assert.equal(payload.dte_days,0.84);
+assert.equal(payload.dte_minutes,1209.6);
 assert.equal(payload.cw_c,4150);
 assert.equal(payload.pw_c,4100);
 assert.equal(payload.quality.atmCallDelta,0.52);
