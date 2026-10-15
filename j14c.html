@@ -53,7 +53,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <section class="panel">
 <h2>QUALIDADE DAS FONTES</h2>
 <div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
-<div><div class="source"><div><strong>ZQ Fed Funds</strong><div class="sub">Complementar — não obrigatório</div></div><div class="right">Fora do viés V1 até a validação LIVE</div></div>
+<div><div class="source"><div><strong>ZQ sintético · EFFR Fed NY</strong><div class="sub">Referência TEÓRICA DIÁRIA; o ZQ CME está indisponível</div></div><div class="right" id="zq-theoretical">Aguardando EFFR oficial… Sem probabilidades e fora do viés V1.</div></div>
 <div class="source"><div><strong>VXN / VIX</strong><div class="sub">Volatilidade implícita</div></div><div class="right">Não entram no viés enquanto não houver fonte confiável e atual</div></div>
 <div class="source"><div><strong>PR / DP / GF / CW / PW</strong><div class="sub">Camada de opções separada</div></div><div class="right">Não modificados e não misturados com sigma realizada</div></div>
 </div></div>
@@ -64,6 +64,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <script>
 "use strict";
 const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14c-continuous-context";
+const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14d-zq-theoretical-public";
 const el=id=>document.getElementById(id);
 const text=(id,value)=>{el(id).textContent=String(value??"—")};
 const labels={
@@ -130,8 +131,25 @@ async function refresh(){
  }catch(error){unavailable(error instanceof Error?error.message:"Consulta falhou");}
  finally{btn.disabled=false;}
 }
-el("refresh").addEventListener("click",refresh);
-refresh();
+async function refreshZqTheory(){
+ const target=el("zq-theoretical");
+ try{
+  const r=await fetch(zqTheoreticalEndpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+  if(!r.ok)throw Error("Fonte EFFR indisponível");
+  const v=await r.json();
+  if(!v.effr||!v.scenarios||v.status!=="THEORETICAL_POLICY_SCENARIO_NOT_LIVE"){
+    throw Error("Taxa diária antiga ou cenários ainda indisponíveis");
+  }
+  const rate=Number(v.effr.percent).toFixed(2).replace(".",",");
+  const fmt=n=>Number(n).toFixed(3).replace(".",",");
+  target.textContent="Contrato "+v.contract+" · EFFR "+rate+"% (data "+v.effr.effective_date+") · Manutenção: "+fmt(v.scenarios.flat)+" · Corte hipotético 0,25 p.p.: "+fmt(v.scenarios.cut25)+" · Alta hipotética 0,25 p.p.: "+fmt(v.scenarios.hike25)+". SEM cotação CME, SEM FedWatch, SEM probabilidade e FORA da confluência J14C.";
+ }catch(_){
+  target.textContent="ZQ real indisponível. A referência teórica da taxa Fed NY também não está disponível ou ficou antiga; sem substituição automática.";
+ }
+}
+el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();});
+refresh();refreshZqTheory();
 setInterval(refresh,300000);
+setInterval(refreshZqTheory,300000);
 </script>
 </body></html>
