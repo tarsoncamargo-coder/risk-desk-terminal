@@ -289,6 +289,7 @@
       atm_strike:result.atmStrike,
       atm_iv_pct:result.atmIvPct,
       dte_days:result.dteDays,
+      dte_minutes:result.dteMinutes,
       dp1:result.dp1,
       dp_p1:L.p1?L.p1.tick:null,
       dp_p2:L.p2?L.p2.tick:null,

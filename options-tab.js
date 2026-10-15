@@ -47,7 +47,7 @@
       matrixSeries:q.matrixSeries||null,
       referencePrice:n(row?.reference_price),
       dteDays:n(row?.dte_days),
-      dteMinutes:row?.dte_days==null?null:Number(row.dte_days)*1440,
+      dteMinutes:row?.dte_minutes!=null?n(row.dte_minutes):(row?.dte_days==null?null:Number(row.dte_days)*1440),
       atmStrike:n(row?.atm_strike),
       atmIvPct:n(row?.atm_iv_pct),
       atmCallDelta:n(q.atmCallDelta),
@@ -127,7 +127,9 @@
     return '<div class="opt-cards">'+
       card("PR",fmtPrice(a,r.referencePrice),r.series||"série não identificada")+
       card("ATM",fmtPrice(a,r.atmStrike),"Delta Call "+fmt(r.atmCallDelta,2)+" · Put "+fmt(r.atmPutDelta,2))+
-      card("IV ATM",r.atmIvPct==null?"—":fmt(r.atmIvPct,2)+"%","DTE "+fmt(r.dteDays,2)+" · "+fmt(r.dteMinutes,1)+" min")+
+      card("IV ATM",r.atmIvPct==null?"—":fmt(r.atmIvPct,2)+"%","volatilidade do strike ATM")+
+      card("DTE",r.dteDays==null?"—":fmt(r.dteDays,2)+" dias","tempo até o vencimento")+
+      card("DTE MINUTOS",r.dteMinutes==null?"—":fmt(r.dteMinutes,1)+" min","DTE × 1.440")+
       card("1 DP",fmt(r.dp1,2)+" pts","tick "+fmt(r.dp1Tick,2))+
       card("CW-C",fmtPrice(a,r.cwC),"Call OI "+fmtInt(r.cwCallOi))+
       card("PW-C",fmtPrice(a,r.pwC),"Put OI "+fmtInt(r.pwPutOi))+
