@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Monitor contínuo do Nasdaq. Pesquisa de regime macroeconômico, confluência, qualidade e volatilidade realizada, sem sinais de negociação.">
+<title>Risk Desk J14C — Radar Contínuo Nasdaq</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;--bg:#0c1116;--panel:#151d24;--line:#293944;--text:#e1e8ee;--muted:#9ab0bf;--blue:#58b8d3}
+*{box-sizing:border-box}body{background:var(--bg);color:var(--text);margin:0;font-size:14px}
+header{padding:18px 22px;border-bottom:1px solid var(--line);background:#111a21}
+.wrap{max-width:1280px;margin:auto;padding:0 18px 40px}nav{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:center;gap:12px}
+h1{font-size:18px;letter-spacing:.05em;margin:0}h2{font-size:14px;margin:0 0 14px;letter-spacing:.03em}
+.sub{font-size:12px;color:var(--muted);margin-top:6px}
+a{color:#88cde2;text-decoration:none}button{cursor:pointer;background:transparent;border:1px solid #496474;color:var(--text);border-radius:5px;padding:9px 13px}
+button:hover{border-color:var(--blue)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-top:18px}
+.hero{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:20px;align-items:start}
+.label{text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-size:11px}
+.bias{font-size:34px;letter-spacing:.04em;font-weight:750;margin:12px 0 2px}
+.up{color:#66d9a0}.down{color:#ff9a90}.neutral{color:#b4ceda}
+.status{display:inline-block;border:1px solid #5d7180;border-radius:30px;padding:5px 9px;font-size:11px}
+.warning{background:#30261b;border:1px solid #86633f;color:#ffd796;padding:11px 13px;border-radius:7px;line-height:1.45;margin:16px 0}
+.info{background:#12232c;border:1px solid #275975;color:#d6edf6;padding:11px 13px;border-radius:7px;margin:16px 0}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.stat{border:1px solid var(--line);background:#111a20;border-radius:7px;padding:14px}
+.big{font-size:22px;font-weight:650;margin-top:9px}
+.data{margin-top:16px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.source{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.source strong{font-size:13px}.right{text-align:right;font-size:12px;max-width:54%;color:var(--muted)}
+.note{font-size:12px;color:#9db1ba;line-height:1.65}
+footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
+@media(max-width:740px){.hero,.data{grid-template-columns:1fr}.cols{grid-template-columns:1fr 1fr}.bias{font-size:28px}}
+</style>
+</head><body>
+<header><nav class="wrap" aria-label="Navegação">
+<div><h1>RISK DESK <span style="color:#58b8d3">//</span> J14C</h1><div class="sub">RADAR CONTÍNUO DO NASDAQ · MODO PESQUISA</div></div>
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<a href="./j14a.html">Saúde J14A</a><a href="./index.html">Terminal</a>
+<button id="refresh" type="button">Atualizar leitura</button></div>
+</nav></header>
+<main class="wrap">
+<div class="info" id="overall" role="status">Consultando o resumo de pesquisa no Supabase…</div>
+<section class="panel hero">
+<div><div class="label">Viés contextual do Nasdaq</div><div class="bias neutral" id="bias">AGUARDANDO</div><div class="sub" id="confidence">Sem dados de confluência validados</div></div>
+<div><div class="label">Interpretação</div><p id="explanation">Nenhum sinal é fornecido até a validação da qualidade das fontes.</p>
+<div class="label" style="margin-top:15px">Estado das informações</div><p id="research-status" class="note">Aguardando consulta.</p></div>
+</section>
+<div class="cols">
+<div class="stat"><div class="label">Fontes utilizáveis</div><div class="big" id="coverage">—</div><div class="sub">Cobertura, não chance de lucro</div></div>
+<div class="stat"><div class="label">Macro a favor / contra</div><div class="big" id="confluence">—</div><div class="sub">Sinais relativos ao NQ em 15 minutos</div></div>
+<div class="stat"><div class="label">Volatilidade realizada NQ</div><div class="big" id="vol">—</div><div class="sub">Sigma realizada, não IV/VXN nem DP de opções</div></div>
+</div>
+<section class="panel">
+<h2>QUALIDADE DAS FONTES</h2>
+<div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
+<div><div class="source"><div><strong>ZQ Fed Funds</strong><div class="sub">Complementar — não obrigatório</div></div><div class="right">Fora do viés V1 até a validação LIVE</div></div>
+<div class="source"><div><strong>VXN / VIX</strong><div class="sub">Volatilidade implícita</div></div><div class="right">Não entram no viés enquanto não houver fonte confiável e atual</div></div>
+<div class="source"><div><strong>PR / DP / GF / CW / PW</strong><div class="sub">Camada de opções separada</div></div><div class="right">Não modificados e não misturados com sigma realizada</div></div>
+</div></div>
+</section>
+<div class="warning" id="guard">PESQUISA SOMENTE. Nunca usar esta tela isoladamente para decidir ordens. O Laranjinha, GEN1 e GEN2 não recebem nem obedecem este viés.</div>
+<footer>O viés comprador/vendedor só é exibido com NQ recente, pelo menos duas fontes macro recentes, confluência direcional e sigma realizada validada. Informações atrasadas resultam em NEUTRO. Leituras atualizadas por rotina a cada cinco minutos; página recarrega automaticamente. Os retornos/valores de mercado do provedor não são divulgados nesta página. Não existe probabilidade de lucro calculada.</footer>
+</main>
+<script>
+"use strict";
+const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14c-continuous-context";
+const el=id=>document.getElementById(id);
+const text=(id,value)=>{el(id).textContent=String(value??"—")};
+const labels={
+ NQ_DATA_NOT_FRESH:"NQ sem cotação recente. O viés direcional foi bloqueado.",
+ INSUFFICIENT_FRESH_MACRO_SOURCES:"Menos de duas fontes macroeconômicas recentes. Sem direção confiável.",
+ SIGMA_NOT_VALIDATED:"A sigma realizada ainda não tem quantidade e atualidade suficientes de candles.",
+ NQ_15M_WITHOUT_DIRECTION:"NQ sem direção clara na janela observada.",
+ MACRO_MIXED_OR_NOT_CONFIRMED:"Fatores macroeconômicos divergentes ou sem confluência.",
+ NQ_AND_AT_LEAST_TWO_MACRO_FACTORS_ALIGNED:"NQ e pelo menos dois fatores macro estão alinhados na janela observada.",
+ SNAPSHOT_OVER_7_MINUTES_OLD:"A fotografia não foi atualizada nos últimos sete minutos. A leitura anterior não é válida."
+};
+function describe(status){
+ const known={
+ FRESH_15M_COMPARABLE:"Dados recentes com comparação de 15 minutos válida",
+ MARKET_BAR_STALE:"Cotação desatualizada",
+ RECEIPT_STALE:"Recepção interrompida",
+ NO_15M_BASELINE:"Sem referência de 15 minutos",
+ '15M_BASELINE_STALE':"Referência histórica insuficiente",
+ MT5_SNAPSHOT_STALE:"MT5 sem amostra recente",
+ MT5_FORMULA_OR_TICK_QUALITY_FAILED:"MT5 com problema de fórmula ou sincronização",
+ DELAYED_OR_REPLAYED_DATA:"Retransmissão histórica ou atraso",
+ SOURCE_NOT_OK:"Fonte reportou qualidade inadequada",
+ SOURCE_NOT_OK:"Fonte sem qualidade operacional",
+ NO_SOURCE_DATA:"Fonte ausente",
+ SIGMA_NOT_VALIDATED:"Sigma incompleta"};
+ return known[status]??(status||"Desconhecido").replaceAll("_"," ");
+}
+function source(label,status){
+ const row=document.createElement("div");row.className="source";
+ const left=document.createElement("div"),name=document.createElement("strong");
+ name.textContent=label;left.append(name);
+ const right=document.createElement("div");right.className="right";right.textContent=describe(status);
+ row.append(left,right);return row;
+}
+function unavailable(message){
+ text("overall",message);el("overall").className="warning";
+ text("bias","NEUTRO");el("bias").className="bias neutral";
+ text("confidence","Sem validação");text("explanation","Sem dados confiáveis disponíveis.");
+ text("coverage","—");text("confluence","—");text("vol","Indisponível");
+ el("primary").replaceChildren(source("NQ","NO_SOURCE_DATA"),source("ZT","NO_SOURCE_DATA"),source("ZN","NO_SOURCE_DATA"),source("DXY sintético MT5","NO_SOURCE_DATA"));
+}
+async function refresh(){
+ const btn=el("refresh");btn.disabled=true;
+ try{
+ const response=await fetch(endpoint,{method:"GET",cache:"no-store",headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+ if(!response.ok)throw Error("API indisponível (HTTP "+response.status+")");
+ const payload=await response.json();
+ if(!payload.context)throw Error("Fotografia incompleta");
+ const c=payload.context;
+ const stale=payload.status==="SNAPSHOT_STALE"||payload.status==="UNAVAILABLE";
+ const valid=payload.status==="SHADOW_CONTEXT_RESEARCH";
+ const bias=valid?c.continuous_bias:"NEUTRO";
+ text("bias",bias);
+ el("bias").className="bias "+(bias==="COMPRADOR"?"up":bias==="VENDEDOR"?"down":"neutral");
+ text("confidence",valid?c.contextual_confidence.replaceAll("_"," "):"Dados insuficientes ou desatualizados");
+ text("explanation",labels[c.reason_code]??c.reason_code.replaceAll("_"," "));
+ text("overall",(stale?"PAINEL DESATUALIZADO — ":"PESQUISA NÃO OPERACIONAL — ")+"Fotografia "+new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(c.assessed_at_utc))+" (Brasília). Idade: "+Number(payload.age_minutes).toFixed(1)+" min.");
+ el("overall").className=stale?"warning":"info";
+ text("research-status",c.research_data_status.replaceAll("_"," ")+" · "+c.session_context.replaceAll("_"," ")+(c.nearby_macro_event?" · Evento próximo: "+c.nearby_macro_event:""));
+ text("coverage",c.fresh_sources+" / "+c.total_sources+" ("+c.source_coverage_pct+"%)");
+ text("confluence",c.bullish_macro_factors+" favoráveis / "+c.bearish_macro_factors+" contrários");
+ text("vol",c.sigma_quality==="REALIZED_SIGMA_RESEARCH_VALID"?c.relative_volatility_regime.replaceAll("_"," "):"Indisponível");
+ el("primary").replaceChildren(source("Nasdaq NQ",c.nq_source_status),source("Treasury 2 anos ZT",c.zt_source_status),source("Treasury 10 anos ZN",c.zn_source_status),source("DXY sintético MT5",c.dxy_source_status));
+ }catch(error){unavailable(error instanceof Error?error.message:"Consulta falhou");}
+ finally{btn.disabled=false;}
+}
+el("refresh").addEventListener("click",refresh);
+refresh();
+setInterval(refresh,300000);
+</script>
+</body></html>
