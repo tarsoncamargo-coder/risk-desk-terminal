@@ -10,7 +10,8 @@ const URLS={
  bias:PREFIX+"riskdesk-j14c-continuous-context",
  zq:PREFIX+"riskdesk-j14e-zq-calendar-weighted",
  official:PREFIX+"riskdesk-j14g-official-macro-releases",
- sigma:PREFIX+"riskdesk-j14k-nq-realized-sigma"
+ sigma:PREFIX+"riskdesk-j14k-nq-realized-sigma",
+ reference:PREFIX+"riskdesk-j14l-sigma-reference-context"
 };
 const IDS=["rdUnifiedPulse","rdUnifiedMacro","rdUnifiedNasdaq","rdUnifiedEvent","rdUnifiedArchive","rdUnifiedProject"];
 const TZ="America/Sao_Paulo";
@@ -183,6 +184,25 @@ function sigmaAllRows(root,D){
   "Preços amostrados nos primeiros segundos do minuto: NÃO são fechamentos M1 certificados. "+
   "Estimativa de volatilidade, não IV/VXN, DP de opções, alvo ou probabilidade.");
 }
+function currentAnchoredReference(D){
+ const xs=D.reference?.data||[];
+ const candidates=xs.filter(x=>x.asset==="NQ"&&x.session_code==="OP_DAY_19_BRT");
+ if(!candidates.length)return null;
+ candidates.sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)));
+ return candidates[0];
+}
+function anchoredPRNote(D){
+ const a=currentAnchoredReference(D);
+ if(!a)return "PR de abertura ainda não capturado; sem referência fixa não calcular distância.";
+ const pts=Number(a.last_observed_move_pts),pct=Number(a.last_observed_move_pct);
+ if(!Number.isFinite(pts)||!Number.isFinite(pct))return "PR registrado, sem preço comparável.";
+ const sign=pts>0?"+":"";
+ return "PR da sessão FIXADO em "+fmtDate(a.reference_timestamp_utc)+" (horário BRT). "+
+ "Última distância observada: "+sign+num(pts,2)+" pts ("+(pct>0?"+":"")+num(pct,4)+"%), preço de "+
+ fmtDate(a.market_timestamp_utc)+". "+
+ (a.status!=="REFERENCE_LOCKED_FRESH_PRICE"?"DADO ATRASADO, NÃO LIVE. ":"")+
+ "Preço bruto da corretora está protegido no Supabase, não é republicado no site aberto.";
+}
 function showPulse(D){
  const root=$("rdUnifiedPulse");if(!root)return;
  const b=viewBias(D.bias);
@@ -211,6 +231,7 @@ function showPulse(D){
    " verificações de saúde · "+num(p.j14c_shadow_samples)+" leituras J14C armazenadas. "+
    "Para conferir pendências e validações abra a aba Sistema.");
  }
+ note(root,anchoredPRNote(D));
  const links=elt("div","rd-orch__links");
  for(const t of [["macro","Detalhes macro"],["nasdaq","Análise Nasdaq"],["evento","Eventos"],["historico","Histórico CLEAN"]]){
   const b=elt("button",null,t[1]);b.type="button";b.addEventListener("click",()=>{
@@ -251,6 +272,7 @@ function showMacro(D){
   t.append(left,right);list.append(t);
  }
  root.append(list);
+ note(root,anchoredPRNote(D));
  sigmaAllRows(root,D);
  note(root,"ZQ sintético = estimativa baseada na EFFR diária e hipóteses de FOMC; ZQ negociado = expectativa de mercado apenas se atualizado. "+
   "VXN é a volatilidade implícita do NDX; a consulta atrasada não vira VXN LIVE. O VIX é secundário. Nenhum desses indicadores auxiliares altera o viés J14C.");
@@ -272,6 +294,7 @@ function showNasdaq(D){
   {label:"Integridade NQ / DXY",value:labelAsset(nq)+" / "+labelAsset(dxy),
    detail:"Não inferir direção a partir de um estado neutro por dados insuficientes."}
  ]);
+ note(root,anchoredPRNote(D));
  sigmaAllRows(root,D);
  note(root,"Estado atual "+(b.qualified?"é uma leitura contextual de pesquisa validada para fontes do J14C.":
   "NÃO permite inferir tendência: pelo menos uma condição de dados ou sigma não passou.")+
@@ -361,9 +384,9 @@ async function update(){
  if(busy||document.visibilityState==="hidden")return;
  busy=true;
  try{
- const [h,b,z,o,p,m,s]=await Promise.allSettled([
+ const [h,b,z,o,p,m,s,a]=await Promise.allSettled([
   fetchJson(URLS.health),fetchJson(URLS.bias),fetchJson(URLS.zq),
-  fetchJson(URLS.official),fetchProgress(),fetchManifest(),fetchJson(URLS.sigma)
+  fetchJson(URLS.official),fetchProgress(),fetchManifest(),fetchJson(URLS.sigma),fetchJson(URLS.reference)
  ]);
  const data={
   health:h.status==="fulfilled"&&Array.isArray(h.value?.rows)?h.value:null,
@@ -372,7 +395,8 @@ async function update(){
   official:o.status==="fulfilled"&&Array.isArray(o.value?.events)?o.value:null,
   progress:p.status==="fulfilled"?p.value:null,
   manifest:m.status==="fulfilled"?m.value:null,
-  sigma:s.status==="fulfilled"&&s.value?.data?s.value:null
+  sigma:s.status==="fulfilled"&&s.value?.data?s.value:null,
+  reference:a.status==="fulfilled"&&Array.isArray(a.value?.data)?a.value:null
  };
  if(data.health&&data.bias)showPulse(data);else missing($("rdUnifiedPulse"),"Radar contínuo · aguarde fontes LIVE");
  if(data.health&&data.bias)showMacro(data);else missing($("rdUnifiedMacro"),"Leitura macro · dados indisponíveis");
