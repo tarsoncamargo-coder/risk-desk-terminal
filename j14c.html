@@ -48,8 +48,18 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <div class="cols">
 <div class="stat"><div class="label">Fontes utilizáveis</div><div class="big" id="coverage">—</div><div class="sub">Cobertura, não chance de lucro</div></div>
 <div class="stat"><div class="label">Macro a favor / contra</div><div class="big" id="confluence">—</div><div class="sub">Sinais relativos ao NQ em 15 minutos</div></div>
-<div class="stat"><div class="label">Volatilidade realizada NQ</div><div class="big" id="vol">—</div><div class="sub">Sigma realizada, não IV/VXN nem DP de opções</div></div>
+<div class="stat"><div class="label">Regime de volatilidade NQ</div><div class="big" id="vol">—</div><div class="sub">Sigma realizada de amostras M1; não IV/VXN nem DP de opções</div></div>
 </div>
+<section class="panel" aria-label="Sigma realizada do Nasdaq">
+<h2>SIGMA REALIZADA NQ — 5, 15, 30 E 60 MINUTOS</h2>
+<div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(185px,1fr))">
+<div class="stat"><div class="label">σ 5 minutos</div><div class="big" id="sigma-5">—</div><div class="sub" id="sigmap-5">Aguardando dados</div></div>
+<div class="stat"><div class="label">σ 15 minutos</div><div class="big" id="sigma-15">—</div><div class="sub" id="sigmap-15">Aguardando dados</div></div>
+<div class="stat"><div class="label">σ 30 minutos</div><div class="big" id="sigma-30">—</div><div class="sub" id="sigmap-30">Aguardando dados</div></div>
+<div class="stat"><div class="label">σ 60 minutos</div><div class="big" id="sigma-60">—</div><div class="sub" id="sigmap-60">Aguardando dados</div></div>
+</div>
+<p class="note" id="sigma-note">Validando contiguidade dos minutos e horário das amostras.</p>
+</section>
 <section class="panel">
 <h2>QUALIDADE DAS FONTES</h2>
 <div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
@@ -67,6 +77,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14c-continuous-context";
 const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14e-zq-calendar-weighted";
 const sourceHealthEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14a-health-panel";
+const nqSigmaEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14k-nq-realized-sigma";
 const el=id=>document.getElementById(id);
 const text=(id,value)=>{el(id).textContent=String(value??"—")};
 const labels={
@@ -133,6 +144,34 @@ async function refresh(){
  }catch(error){unavailable(error instanceof Error?error.message:"Consulta falhou");}
  finally{btn.disabled=false;}
 }
+async function refreshNqSigma(){
+ const note=el("sigma-note");
+ try {
+  const r=await fetch(nqSigmaEndpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:AbortSignal.timeout(11000)});
+  if(!r.ok)throw Error("API de sigma indisponível");
+  const result=await r.json();
+  const s=result.data;
+  if(result.status!=="RESEARCH_QUALITY_PASS_MINUTE_SNAPSHOT"||!s)throw Error("Amostras M1 atrasadas ou incompletas");
+  const age=(Date.now()-Date.parse(s.source_minute_utc))/60000;
+  if(!Number.isFinite(age)||age<(-2)||age>5)throw Error("Sigma fora da validade");
+  const pt=v=>Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const pct=v=>Number(v).toLocaleString("pt-BR",{minimumFractionDigits:4,maximumFractionDigits:4});
+  for(const m of [5,15,30,60]){
+   const p=s["sigma_"+m+"m_points"],v=s["sigma_"+m+"m_pct"];
+   if(p==null||v==null)throw Error("Sigma "+m+"m inválida");
+   text("sigma-"+m,"±"+pt(p)+" pts");
+   text("sigmap-"+m,pct(v)+"% do NQ");
+  }
+  note.textContent="Regime: "+String(s.volatility_regime||"INDETERMINADO").replaceAll("_"," ")+
+   " | "+s.contiguous_returns_60m+" retornos consecutivos de 60m | Última amostra "+
+   new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(s.source_minute_utc))+
+   " (Brasília). Preços amostrados no início do minuto; ainda NÃO são fechamentos M1 certificados. "+
+   "Faixas estatísticas estimadas, não limites de preço ou probabilidades de lucro.";
+ } catch(_) {
+  for(const m of [5,15,30,60]){text("sigma-"+m,"Indisponível");text("sigmap-"+m,"Sem amostra válida");}
+  note.textContent="Sigma não disponível: horário desatualizado, retornos não consecutivos ou falha de validação. Não exibir o último cálculo como atual.";
+ }
+}
 async function refreshZqTheory(){
  const target=el("zq-theoretical");
  try{
@@ -188,9 +227,10 @@ async function refreshVxnVixQuality(){
   el("zq-live-status").textContent="ZQ negociado: sem diagnóstico atual validado. Não substituir pela taxa EFFR teórica.";
  }
 }
-el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();refreshVxnVixQuality();});
-refresh();refreshZqTheory();refreshVxnVixQuality();
-setInterval(refresh,300000);
+el("refresh").addEventListener("click",()=>{refresh();refreshNqSigma();refreshZqTheory();refreshVxnVixQuality();});
+refresh();refreshNqSigma();refreshZqTheory();refreshVxnVixQuality();
+setInterval(refresh,120000);
+setInterval(refreshNqSigma,120000);
 setInterval(refreshZqTheory,300000);
 setInterval(refreshVxnVixQuality,300000);
 </script>
