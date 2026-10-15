@@ -60,7 +60,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                         if (!File.Exists(csvFile))
                         {
                             File.WriteAllText(csvFile,
-                                "bar_timestamp_utc,asset,contract,close_price,volume,source,nt_observed_at_utc"
+                                "bar_timestamp_utc,asset,contract,open_price,close_price,volume,source,nt_observed_at_utc"
                                 + Environment.NewLine);
                         }
                     }
@@ -97,9 +97,12 @@ namespace NinjaTrader.NinjaScript.Indicators
                 if (barUtc <= lastWrittenUtc)
                     return;
 
+                double openPrice = Open[0];
                 double closePrice = Close[0];
                 double barVolume = Volume[0];
-                if (Double.IsNaN(closePrice) || Double.IsInfinity(closePrice) ||
+                if (Double.IsNaN(openPrice) || Double.IsInfinity(openPrice) ||
+                    openPrice <= 100 || openPrice >= 100000 ||
+                    Double.IsNaN(closePrice) || Double.IsInfinity(closePrice) ||
                     closePrice <= 100 || closePrice >= 100000 ||
                     barVolume < 0 || Double.IsNaN(barVolume) || Double.IsInfinity(barVolume))
                     return;
@@ -113,6 +116,7 @@ namespace NinjaTrader.NinjaScript.Indicators
                     barUtc.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
                     "MGC",
                     contract,
+                    openPrice.ToString("R", CultureInfo.InvariantCulture),
                     closePrice.ToString("R", CultureInfo.InvariantCulture),
                     barVolume.ToString("R", CultureInfo.InvariantCulture),
                     "NINJATRADER_GOLD_BRIDGE",
