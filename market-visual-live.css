@@ -1,0 +1,12 @@
+/* Observação visual do mercado; dados antigos são explicitamente rotulados. */
+.rd-mkt-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.rd-mkt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.rd-mkt-cell{padding:10px;border:1px solid rgba(146,162,183,.20);border-radius:9px;min-width:0}
+.rd-mkt-name{font-size:12px;opacity:.77}
+.rd-mkt-price{display:block;font-variant-numeric:tabular-nums;font-size:17px;letter-spacing:.2px;margin:4px 0}
+.rd-mkt-status{font-size:10px;letter-spacing:.03em}
+.rd-mkt-fresh{color:#61be91}
+.rd-mkt-stale{color:#efbd71}
+.rd-mkt-wait{color:#98a6b4}
+.rd-mkt-foot{font-size:11px;opacity:.68;line-height:1.5;margin:10px 0 0}
+@media(max-width:480px){.rd-mkt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-mkt-price{font-size:15px}}
