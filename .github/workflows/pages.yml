@@ -2,6 +2,8 @@ name: Deploy Risk Desk Terminal to GitHub Pages
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,12 +29,16 @@ jobs:
           node --check live-hoje.js
           node --check event-monitor.js
           node --check mt5-shadow-hoje.js
+          node --check options-core.js
+          node --check options-tab.js
+          node --check collector/options-collector.mjs
           node --check cross-asset-core.js
           node tests/confluence-v2.test.cjs
           node tests/site-ui.test.cjs
           node tests/market-visual-live.test.cjs
           node tests/historico-clean-v8.test.cjs
           node tests/mt5-shadow-hoje.test.cjs
+          node tests/options-core.test.cjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
