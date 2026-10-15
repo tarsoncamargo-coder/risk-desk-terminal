@@ -41,4 +41,8 @@ assert.equal(payload.source_mode,"TEST");
 assert.equal(payload.reference_price,4127.3);
 assert.equal(payload.cw_c,4150);
 assert.equal(payload.pw_c,4100);
+assert.equal(payload.quality.atmCallDelta,0.52);
+assert.equal(payload.quality.cwCallOi,300);
+assert.equal(payload.quality.pwPutOi,400);
+assert.ok(Array.isArray(payload.quality.warnings));
 console.log("PASS OPTIONS V1: parser, ATM IV, DP, walls, GEX and snapshot payload");

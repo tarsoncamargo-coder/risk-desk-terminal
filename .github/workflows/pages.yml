@@ -36,6 +36,7 @@ jobs:
           node tests/historico-clean-v8.test.cjs
           node tests/mt5-shadow-hoje.test.cjs
           node tests/options-core.test.cjs
+          node tests/options-persistence.test.cjs
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
