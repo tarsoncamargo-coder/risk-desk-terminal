@@ -40,7 +40,7 @@
 <section id="opcoes" class="page">
 <h1>Opções</h1>
 <div class="sub">Módulo informativo e isolado. Os cálculos desta aba não alimentam GEN1, GEN2, Market State, macro, confluência, risco ou qualquer sinal operacional.</div>
-<div class="opt-note"><b>Fluxo V1:</b> cole o cabeçalho + Pricing Sheet + matriz de Open Interest do CME QuickStrike. O mesmo motor calcula PR, ATM, IV ATM, DTE, DP, CW, PW, GEX e Gamma Flip. A coleta automática usa este mesmo motor e aparece nesta aba quando publicada.</div>
+<div class="opt-note"><b>Fluxo V1:</b> cole o cabeçalho + Pricing Sheet + matriz de Open Interest do CME QuickStrike. O mesmo motor calcula PR, ATM, IV ATM, DTE, DP, CW, PW, GEX e Gamma Flip. A coleta automática usa este mesmo motor e aparece nesta aba quando publicada. O último resultado calculado fica salvo neste navegador e é restaurado mesmo após atualizar a página.</div>
 <div class="opt-grid gap-top">
   <article class="opt-panel">
     <div class="opt-head"><div><h2>GOLD / MGC</h2><div class="ms">Multiplicador GEX: 100 · Tick de exibição: 0,1</div></div><span class="badge info">ISOLADO</span></div>
@@ -49,7 +49,7 @@
     <div id="optStatusMGC" class="opt-status">Aguardando dados manuais.</div>
     <div id="optAutoMGC" class="opt-auto"><div class="opt-auto-head"><b>Coletor automático</b><span class="badge">CARREGANDO</span></div></div>
     <div id="optResultsMGC" class="opt-results"></div>
-    <div class="opt-history"><div class="opt-head"><div class="ct">Histórico manual neste navegador</div><button id="optClearHistoryMGC" class="btn" type="button">Limpar histórico</button></div><div id="optHistoryMGC"></div></div>
+    <div class="opt-history"><div class="opt-head"><div class="ct">Histórico completo de cálculos</div><button id="optClearHistoryMGC" class="btn" type="button">Limpar histórico</button></div><div id="optHistoryMGC"></div></div>
   </article>
   <article class="opt-panel">
     <div class="opt-head"><div><h2>NASDAQ / MNQ</h2><div class="ms">Multiplicador GEX: 20 · Tick de exibição: 0,25</div></div><span class="badge info">ISOLADO</span></div>
@@ -58,7 +58,7 @@
     <div id="optStatusMNQ" class="opt-status">Aguardando dados manuais.</div>
     <div id="optAutoMNQ" class="opt-auto"><div class="opt-auto-head"><b>Coletor automático</b><span class="badge">CARREGANDO</span></div></div>
     <div id="optResultsMNQ" class="opt-results"></div>
-    <div class="opt-history"><div class="opt-head"><div class="ct">Histórico manual neste navegador</div><button id="optClearHistoryMNQ" class="btn" type="button">Limpar histórico</button></div><div id="optHistoryMNQ"></div></div>
+    <div class="opt-history"><div class="opt-head"><div class="ct">Histórico completo de cálculos</div><button id="optClearHistoryMNQ" class="btn" type="button">Limpar histórico</button></div><div id="optHistoryMNQ"></div></div>
   </article>
 </div>
 <article class="card gap-top">
