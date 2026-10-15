@@ -54,7 +54,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 <h2>QUALIDADE DAS FONTES</h2>
 <div class="data"><div id="primary"><div class="note">Buscando dados…</div></div>
 <div><div class="source"><div><strong>ZQ sintético · EFFR Fed NY</strong><div class="sub">Ponderação diária, feriados Fed, cenários 0/±25bp · <a href="https://www.cmegroup.com/markets/interest-rates/stirs/30-day-federal-fund.settlements.html" target="_blank" rel="noopener noreferrer">Ver ajustes CME</a> · <a href="https://www.cmegroup.com/market-data/daily-bulletin.html" target="_blank" rel="noopener noreferrer">Boletim CME</a></div></div><div class="right" id="zq-theoretical">Aguardando EFFR oficial… Sem probabilidades e fora do viés V1.</div></div>
-<div class="source"><div><strong>VXN / VIX</strong><div class="sub">Volatilidade implícita</div></div><div class="right">Não entram no viés enquanto não houver fonte confiável e atual</div></div>
+<div class="source"><div><strong>VXN / VIX · qualidade da fonte</strong><div class="sub">VXN oficial: <a href="https://fred.stlouisfed.org/series/VXNCLS" target="_blank" rel="noopener noreferrer">fechamento diário FRED/Cboe</a> · Intradiário: Yahoo sem garantia de tempo real</div></div><div class="right" id="vxn-vix-quality">Verificando data de mercado e atraso…</div></div>
 <div class="source"><div><strong>PR / DP / GF / CW / PW</strong><div class="sub">Camada de opções separada</div></div><div class="right">Não modificados e não misturados com sigma realizada</div></div>
 </div></div>
 </section>
@@ -65,6 +65,7 @@ footer{margin:24px 0;color:var(--muted);font-size:11px;line-height:1.7}
 "use strict";
 const endpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14c-continuous-context";
 const zqTheoreticalEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14e-zq-calendar-weighted";
+const sourceHealthEndpoint="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14a-health-panel";
 const el=id=>document.getElementById(id);
 const text=(id,value)=>{el(id).textContent=String(value??"—")};
 const labels={
@@ -154,9 +155,32 @@ async function refreshZqTheory(){
   target.textContent="ZQ real desatualizado e taxa ponderada indisponível ou antiga. Sem preenchimento automático como cotação CME.";
  }
 }
-el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();});
-refresh();refreshZqTheory();
+async function refreshVxnVixQuality(){
+ const target=el("vxn-vix-quality");
+ try{
+  const r=await fetch(sourceHealthEndpoint,{cache:"no-store",headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+  if(!r.ok)throw Error("Fonte de qualidade indisponível");
+  const d=await r.json();
+  if(!Array.isArray(d.rows))throw Error("Sem estados verificados");
+  const latest={};
+  for(const asset of ["VXN","VIX"]){
+   const a=d.rows.find(x=>x.item_key==="ASSET_"+asset);
+   if(!a||!a.last_market_ts_utc)throw Error("Fonte sem timestamp");
+   const age=(Date.now()-Date.parse(a.last_market_ts_utc))/60000;
+   const valid=Number.isFinite(age)&&age>=-2&&age<=20;
+   const day=new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(new Date(a.last_market_ts_utc));
+   latest[asset]=asset+": "+day+" (Brasília, "+(Number.isFinite(age)?Math.round(age)+" min":"idade desconhecida")+
+    "; "+(valid?"dados atrasados, somente contexto":"SEM cotação intradiária atual")+")";
+  }
+  target.textContent=latest.VXN+" | "+latest.VIX+". VXN oficial diário disponível pelo FRED; sem VXN sintético por ausência de cadeia NDX 30 dias. Não compõem o viés de compra/venda.";
+ }catch(_){
+  target.textContent="VXN/VIX sem diagnóstico atual validado. Consulte a série diária VXNCLS. Sigma realizada do NQ continua separada; NÃO substitui o VXN.";
+ }
+}
+el("refresh").addEventListener("click",()=>{refresh();refreshZqTheory();refreshVxnVixQuality();});
+refresh();refreshZqTheory();refreshVxnVixQuality();
 setInterval(refresh,300000);
 setInterval(refreshZqTheory,300000);
+setInterval(refreshVxnVixQuality,300000);
 </script>
 </body></html>
