@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Risk Desk J14A — Saúde LIVE</title>
+<meta name="description" content="Diagnóstico de fontes e motores do Risk Desk J14A, somente pesquisa.">
+<style>
+:root{color-scheme:dark;font-family:"IBM Plex Sans",Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#0a0e11;color:#d5e1e6;font-size:13px}
+header{position:sticky;top:0;background:#101519;border-bottom:1px solid #29343c;z-index:2}
+.top,.wrap{max-width:1500px;margin:auto;padding:12px 16px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:15px;letter-spacing:.1em;margin:0}
+.accent{color:#44bddd}h2{font-size:12px;letter-spacing:.1em;font-weight:600;margin:0;padding:13px;border-bottom:1px solid #25323a;background:#161d21}
+.small{font-size:11px;color:#97a8b0}
+#summary{border-left:2px solid #4ca0bb;background:#102029;padding:12px;margin:14px 0;font-size:12px}
+#summary.warn{border-color:#ffc66a;background:#292315}
+button,a.link{color:#dce8ee;background:transparent;border:1px solid #43535e;padding:8px 11px;font-size:11px;text-decoration:none;cursor:pointer}
+button:hover,a.link:hover{border-color:#57bcd9}
+button:disabled{opacity:.5;cursor:wait}
+.badge{border:1px solid #4095ac;color:#68cee6;padding:4px 7px;font-size:10px;letter-spacing:.08em}
+section{border:1px solid #26343b;margin:16px 0}
+.scroll{overflow-x:auto}
+table{width:100%;min-width:770px;border-collapse:collapse}
+th,td{padding:10px 12px;border-bottom:1px solid #263038;text-align:left;vertical-align:top}
+th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#9cafbd;background:#192126}
+td small{display:block;font-size:10px;line-height:1.4;color:#9baeb8;margin-top:5px;max-width:350px}
+td:first-child{min-width:112px}
+td:nth-child(2){min-width:185px}
+td:nth-child(5){max-width:480px;line-height:1.35}
+.number{font-family:Consolas,"IBM Plex Mono",monospace;white-space:nowrap;font-size:11px}
+.status{display:inline-block;padding:3px 7px;border:1px solid;font-size:10px;letter-spacing:.04em}
+.ok{border-color:#3f9e70;color:#54d99b}.alert{border-color:#b48a40;color:#f4c36d}
+.off{border-color:#657884;color:#9babb6}.waiting{border-color:#3389a3;color:#6ccee4}
+.study{border-color:#776cae;color:#bcaeee}
+.footer{margin:18px 0 24px;line-height:1.7;color:#94a9b4;font-size:11px}
+@media(max-width:650px){.top{padding:12px}.wrap{padding:9px}h1{font-size:12px}}
+</style>
+</head>
+<body>
+<header><div class="top"><div><h1>RISK DESK <span class="accent">//</span> J14A · SAÚDE LIVE</h1><div class="small">NQ · ZQ · ZT · ZN · DXY · VIX · VXN</div></div>
+<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+<span class="badge">PESQUISA / CONTEXTO</span>
+<a class="link" href="./index.html">Terminal GitHub</a>
+<button type="button" id="refresh">Atualizar dados</button></div></div></header>
+<main class="wrap">
+<div id="summary" role="status">Buscando estados da fonte de diagnóstico…</div>
+<section><h2>ATIVOS — COTAÇÃO X HORÁRIO DE RECEBIMENTO</h2><div class="scroll"><table><thead><tr><th>Ativo / origem</th><th>Condição</th><th>Idade da cotação</th><th>Horário Brasília</th><th>Interpretação</th></tr></thead><tbody id="assets"><tr><td colspan="5">Carregando…</td></tr></tbody></table></div></section>
+<section><h2>SISTEMA — BRIDGE, MARKET STATE, GEN1, GEN2 E ESCOPO</h2><div class="scroll"><table><thead><tr><th>Componente</th><th>Condição</th><th>Idade do heartbeat</th><th>Horário Brasília</th><th>Interpretação</th></tr></thead><tbody id="systems"><tr><td colspan="5">Carregando…</td></tr></tbody></table></div></section>
+<div class="footer">Quadro informativo independente da tela histórica do Lovable. O estado «Supabase conectado» verifica somente o banco, não a atualidade de cada mercado. Os horários de barras de mercado e de recebimento são distintos. Não há preço, recomendação, probabilidade de lucro ou autorização para trading. O Market State em AGUARDANDO fora da janela de evento não é falha por si só. O GEN2 permanece Shadow.</div>
+</main>
+<script>
+"use strict";
+const ENDPOINT="https://pkmjknlbsptqhanejddm.supabase.co/functions/v1/riskdesk-j14a-health-panel";
+const MAX_AGE_MIN=5;
+const summary=document.getElementById("summary");
+const btn=document.getElementById("refresh");
+const assets=document.getElementById("assets");
+const systems=document.getElementById("systems");
+function dateBR(x){
+ if(!x)return "—";
+ const d=new Date(x);
+ return Number.isFinite(d.getTime())?new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(d):"—";
+}
+function numberMin(x){return x==null?"—":Number(x).toLocaleString("pt-BR",{maximumFractionDigits:1})+" min";}
+const LABELS={OK:"ATUALIZADO",ATENCAO:"ATENÇÃO",FORA_SESSAO:"FORA DA SESSÃO",AGUARDANDO:"AGUARDANDO",PESQUISA:"PESQUISA"};
+const CLASSES={OK:"ok",ATENCAO:"alert",FORA_SESSAO:"off",AGUARDANDO:"waiting",PESQUISA:"study"};
+function elt(tag,cls,value){
+ const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=value;return e;
+}
+function drawRow(row){
+ const tr=elt("tr");
+ const first=elt("td");first.append(elt("strong","",row.label_pt||"—"),elt("small","",row.source_name||"—"));tr.append(first);
+ const sec=elt("td");
+ sec.append(elt("span","status "+(CLASSES[row.severity]||"alert"),LABELS[row.severity]||"DESCONHECIDO"),
+ elt("small","",String(row.diagnostic_status||"—").replaceAll("_"," ")));tr.append(sec);
+ tr.append(elt("td","number",numberMin(row.age_minutes)));
+ const dt=elt("td","number",dateBR(row.group_code==="ASSET"?row.last_market_ts_utc:row.last_received_ts_utc));
+ if(row.group_code==="ASSET")dt.append(elt("small","", "Recebido: "+dateBR(row.last_received_ts_utc)));
+ tr.append(dt);
+ tr.append(elt("td","",row.explanation_pt||"Sem explicação disponível"));
+ return tr;
+}
+function clearOnFailure(text){
+ assets.replaceChildren(elt("tr"));
+ assets.firstChild.append(elt("td","",text));
+ systems.replaceChildren(elt("tr"));
+ systems.firstChild.append(elt("td","",text));
+ summary.className="warn";
+ summary.textContent="DADOS INDISPONÍVEIS — "+text+" Nenhum estado antigo será mostrado como atual.";
+}
+async function refresh(){
+ btn.disabled=true;
+ try{
+  const req=await fetch(ENDPOINT,{method:"GET",cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(12000)});
+  if(!req.ok)throw new Error("Fonte indisponível (HTTP "+req.status+")");
+  const data=await req.json();
+  if(!Array.isArray(data.rows)||data.rows.length!==13)throw new Error("Snapshot incompleto");
+  const age=(Date.now()-Date.parse(data.assessed_at_utc))/60000;
+  const stale=age>MAX_AGE_MIN||age<(-2)||!Number.isFinite(age)||data.status==="SNAPSHOT_STALE_NOT_LIVE";
+  summary.className=stale?"warn":"";
+  summary.textContent=(stale?"PAINEL DESATUALIZADO — NÃO USAR COMO LEITURA ATUAL":"DIAGNÓSTICO J14A — NÃO É SINAL")+" | Capturado: "+dateBR(data.assessed_at_utc)+" | Idade: "+numberMin(age)+" | Atualização automática a cada 2 minutos.";
+  assets.replaceChildren();systems.replaceChildren();
+  for(const row of data.rows){
+   if(row.group_code==="ASSET")assets.append(drawRow(row));else systems.append(drawRow(row));
+  }
+ }catch(err){clearOnFailure(err instanceof Error?err.message:"Consulta interrompida");}
+ finally{btn.disabled=false;}
+}
+btn.addEventListener("click",refresh);
+refresh();
+setInterval(refresh,120000);
+</script>
+</body>
+</html>
