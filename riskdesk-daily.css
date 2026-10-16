@@ -1,9 +1,23 @@
-/* Consolidated daily overview; scoped, no effect on trading core. */
-.rd-daily-title{font-size:17px;font-weight:800;margin-bottom:6px}
-.rd-daily-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
-.rd-daily-cell{padding:14px;border:1px solid #314150;border-radius:8px;background:#111b25;min-width:0}
-.rd-daily-label{font-size:12px;color:#a4b6c7;font-weight:700;margin-bottom:7px}
-.rd-daily-value{font-size:19px;font-weight:800;overflow-wrap:anywhere;color:#e5effa}
-.rd-daily-muted{font-size:12px;color:#a0aebb;margin-top:7px;overflow-wrap:anywhere;line-height:1.4}
-@media(max-width:850px){.rd-daily-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:540px){.rd-daily-grid{grid-template-columns:1fr}}
+/* Radar visual V2 - cards compactos, semaforos e setas de deslocamento. */
+.rd-daily-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rd-daily-title{font-size:18px;font-weight:850;letter-spacing:.035em}
+.rd-daily-pill{font-size:10px;letter-spacing:.12em;padding:5px 9px;border:1px solid #3e5268;border-radius:30px;color:#a9bfd4}
+.rd-daily-description{margin-top:5px}
+.rd-daily-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.rd-daily-cell{min-width:0;background:linear-gradient(140deg,#172535,#101821);border:1px solid #31475b;border-radius:11px;padding:13px 15px;position:relative}
+.rd-daily-cell--positive,.rd-daily-cell--up{border-color:#357e60}
+.rd-daily-cell--negative,.rd-daily-cell--down{border-color:#8b474f}
+.rd-daily-cell--warning{border-color:#947742}
+.rd-daily-cell-top{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+.rd-daily-label{font-weight:750;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#b3c6d6;overflow-wrap:anywhere}
+.rd-daily-light{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#7e91a1;box-shadow:0 0 0 3px #8091a11b}
+.rd-daily-light--positive,.rd-daily-light--up{background:#49c88b;box-shadow:0 0 9px #49c88b88}
+.rd-daily-light--negative,.rd-daily-light--down{background:#ef6c75;box-shadow:0 0 9px #ef6c7588}
+.rd-daily-light--warning{background:#e9b85f;box-shadow:0 0 9px #e9b85f88}
+.rd-daily-value{font-size:21px;line-height:1.22;font-weight:850;color:#eef5fb;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.rd-daily-cell--up .rd-daily-value{color:#6fdfad}
+.rd-daily-cell--down .rd-daily-value{color:#ff919a}
+.rd-daily-arrow{font-size:29px;font-weight:900;margin-right:7px}
+.rd-daily-muted{font-size:11px;color:#91a5b7;margin-top:6px;overflow-wrap:anywhere;line-height:1.4}
+@media(max-width:980px){.rd-daily-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.rd-daily-grid{grid-template-columns:1fr}.rd-daily-value{font-size:19px}}
