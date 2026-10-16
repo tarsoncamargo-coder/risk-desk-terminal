@@ -1,23 +1,21 @@
-/* Radar visual V2 - cards compactos, semaforos e setas de deslocamento. */
-.rd-daily-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.rd-daily-title{font-size:18px;font-weight:850;letter-spacing:.035em}
-.rd-daily-pill{font-size:10px;letter-spacing:.12em;padding:5px 9px;border:1px solid #3e5268;border-radius:30px;color:#a9bfd4}
-.rd-daily-description{margin-top:5px}
-.rd-daily-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
-.rd-daily-cell{min-width:0;background:linear-gradient(140deg,#172535,#101821);border:1px solid #31475b;border-radius:11px;padding:13px 15px;position:relative}
-.rd-daily-cell--positive,.rd-daily-cell--up{border-color:#357e60}
-.rd-daily-cell--negative,.rd-daily-cell--down{border-color:#8b474f}
-.rd-daily-cell--warning{border-color:#947742}
-.rd-daily-cell-top{display:flex;align-items:center;gap:7px;margin-bottom:10px}
-.rd-daily-label{font-weight:750;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#b3c6d6;overflow-wrap:anywhere}
-.rd-daily-light{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#7e91a1;box-shadow:0 0 0 3px #8091a11b}
-.rd-daily-light--positive,.rd-daily-light--up{background:#49c88b;box-shadow:0 0 9px #49c88b88}
-.rd-daily-light--negative,.rd-daily-light--down{background:#ef6c75;box-shadow:0 0 9px #ef6c7588}
-.rd-daily-light--warning{background:#e9b85f;box-shadow:0 0 9px #e9b85f88}
-.rd-daily-value{font-size:21px;line-height:1.22;font-weight:850;color:#eef5fb;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.rd-daily-cell--up .rd-daily-value{color:#6fdfad}
-.rd-daily-cell--down .rd-daily-value{color:#ff919a}
-.rd-daily-arrow{font-size:29px;font-weight:900;margin-right:7px}
-.rd-daily-muted{font-size:11px;color:#91a5b7;margin-top:6px;overflow-wrap:anywhere;line-height:1.4}
-@media(max-width:980px){.rd-daily-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.rd-daily-grid{grid-template-columns:1fr}.rd-daily-value{font-size:19px}}
+/* Radar de tabelas: Ativo | Valor | Variacao | % | Direcao | Status */
+.rd-daily-title{font-size:18px;font-weight:850;letter-spacing:.03em;margin-bottom:12px}
+.rd-daily-scroll{overflow-x:auto;border-radius:9px;border:1px solid #334459}
+.rd-radar-table{width:100%;border-collapse:collapse;min-width:690px;font-variant-numeric:tabular-nums}
+.rd-radar-table thead{background:#1b2b3b}
+.rd-radar-table th{font-size:11px;color:#a8c0d2;text-transform:uppercase;letter-spacing:.07em;text-align:left;padding:11px}
+.rd-radar-table td{font-size:13px;color:#e7edf3;padding:11px;border-top:1px solid #293a4b}
+.rd-radar-table tbody tr:nth-child(even){background:#14202b}
+.rd-radar-table tbody tr:hover{background:#233446}
+.rd-radar-name{font-weight:850}
+.rd-radar-number{font-weight:750;white-space:nowrap}
+.rd-radar-direction{font-weight:900;font-size:22px!important}
+.rd-radar-direction--up{color:#49c88b!important}
+.rd-radar-direction--down{color:#ef6c75!important}
+.rd-radar-direction--flat{color:#e9b85f!important}
+.rd-radar-status{font-weight:800;font-size:11px!important}
+.rd-radar-status--positive{color:#49c88b!important}
+.rd-radar-status--warning{color:#e9b85f!important}
+.rd-radar-status--negative{color:#ef6c75!important}
+.rd-radar-status--neutral{color:#aebdcc!important}
+.rd-daily-muted{font-size:11px;color:#a8b6c4;margin-top:9px;line-height:1.45}
