@@ -18,7 +18,8 @@ const sources=[
  ["goldPR","riskdesk_j15_gold_pr_site_v1","select=*&order=anchor_minute_utc.desc&limit=5"],
  ["health","riskdesk_j14a_live_health_site_v1","select=*&order=sort_index.asc&limit=25"],
  ["fed","riskdesk_j14e_zq_weighted_site_v1","select=*&order=month_first.asc&limit=2"],
- ["expansion","riskdesk_sigma_expansion_history_site_v1","select=*&limit=2"]
+ ["expansion","riskdesk_sigma_expansion_history_site_v1","select=*&limit=2"],
+ ["importReadiness","riskdesk_sigma_import_readiness_site_v1","select=asset,loaded_rows,expected_rows,state&limit=2"]
 ];
 function statusTone(value){
  const s=String(value||"").toUpperCase();
@@ -77,6 +78,8 @@ function changePct(x){return ok(x)?(Number(x)>0?"+":"")+num(x,3)+"%":"—"}
 function statusFrom(ts,other){if(!other)return "Indisponível";if(!ts)return "Contexto";return recent(ts)?"Atualizado":"Atrasado"}
 function show(data,errors){
  const c=data.context?.[0],snap=data.snap?.[0],ns=data.nqSigma?.[0],nq=(data.nqPR||[]).find(x=>x.asset==="NQ"&&x.price_reference_is_frozen);
+ const readiness=data.importReadiness||[],nqImport=readiness.find(x=>x.asset==="MNQ"),goldImport=readiness.find(x=>x.asset==="MGC");
+ const importedLabel=x=>x?(Number(x.loaded_rows||0).toLocaleString("pt-BR")+"/"+Number(x.expected_rows||0).toLocaleString("pt-BR") + " linhas · HISTÓRICO"):"importação não consultada";
  const historical=data.expansion||[], nqHist=historical.find(x=>x.asset==="NQ"), goldHist=historical.find(x=>x.asset==="MGC");
  const gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked),fed=data.fed?.[0];
  const nqGood=/PASS|READY|OK/.test(String(ns?.quality_status||"").toUpperCase())&&recent(ns?.source_minute_utc)&&Number(ns?.contiguous_returns_60m)>=60&&ok(ns?.sigma_60m_points);
@@ -104,7 +107,7 @@ function show(data,errors){
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
- ["σ mediana histórica · horário",ok(nqHist?.sigma15_median)?"±"+num(nqHist.sigma15_median)+" pts":"—","—","—","—",nqHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível",(nqHist?.historical_sessions??0)+"/20 sessões · P75/P90 somente após validação"],
+ ["σ mediana histórica · horário",ok(nqHist?.sigma15_median)?"±"+num(nqHist.sigma15_median)+" pts":"—","—","—","—",nqHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível",importedLabel(nqImport)+" · P75/P90 somente após validação"],
  ["Expansão / compressão",nqGood?String(ns.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",nqGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",ok(nqHist?.expansion_ratio)?num(nqHist.expansion_ratio)+"×":"—","—","—","—",nqHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível","P75: "+(ok(nqHist?.sigma15_p75)?num(nqHist.sigma15_p75):"—")+" · P90: "+(ok(nqHist?.sigma15_p90)?num(nqHist.sigma15_p90):"—")]
  ];
@@ -114,7 +117,7 @@ function show(data,errors){
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
- ["σ mediana histórica · horário",ok(goldHist?.sigma15_median)?"±"+num(goldHist.sigma15_median)+" pts":"—","—","—","—",goldHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível",(goldHist?.historical_sessions??0)+"/20 sessões · P75/P90 após validação"],
+ ["σ mediana histórica · horário",ok(goldHist?.sigma15_median)?"±"+num(goldHist.sigma15_median)+" pts":"—","—","—","—",goldHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível",importedLabel(goldImport)+" · P75/P90 após validação"],
  ["Expansão / compressão",goldGood?String(gs.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",goldGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",ok(goldHist?.expansion_ratio)?num(goldHist.expansion_ratio)+"×":"—","—","—","—",goldHist?.state==="HISTORICAL_BENCHMARK_READY"?"Contexto":"Indisponível","P75: "+(ok(goldHist?.sigma15_p75)?num(goldHist.sigma15_p75):"—")+" · P90: "+(ok(goldHist?.sigma15_p90)?num(goldHist.sigma15_p90):"—")]
  ];
