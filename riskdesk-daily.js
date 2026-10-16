@@ -109,7 +109,7 @@ function show(data,errors){
  ["PR congelado",nq?.price_reference_is_frozen?"Capturado":"—","—","—","—",nq?"Contexto":"Indisponível",nq?.status||""],
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
- ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
+ ["σ anterior · mesmo horário",benchReady(nqHist)&&ok(nqHist.previous_sigma15_points)?"±"+num(nqHist.previous_sigma15_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",nqHist?.previous_globex_session_date?(nqHist.previous_globex_session_date+" · MNQ proxy histórico, não NQ"):"Sessão anterior ainda não importada"],
  ["σ mediana histórica · horário",benchReady(nqHist)?"±"+num(nqHist.median_15m_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",benchInfo(nqHist)],
  ["Expansão / compressão",nqGood?String(ns.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",nqGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",benchRatioReady(nqHist)?num(nqHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(nqHist)?"Pesquisa":"Pendente",percentileInfo(nqHist)]
@@ -119,7 +119,7 @@ function show(data,errors){
  ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
- ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
+ ["σ anterior · mesmo horário",benchReady(goldHist)&&ok(goldHist.previous_sigma15_points)?"±"+num(goldHist.previous_sigma15_points)+" pts":"—","—","—","—",benchReady(goldHist)?"Histórico":"Pendente",goldHist?.previous_globex_session_date?(goldHist.previous_globex_session_date+" · MGC, mesmo vencimento e faixa de 5min"):"Sessão anterior ainda não importada"],
  ["σ mediana histórica · horário",benchReady(goldHist)?"±"+num(goldHist.median_15m_points)+" pts":"—","—","—","—",benchReady(goldHist)?"Histórico":"Pendente",benchInfo(goldHist)],
  ["Expansão / compressão",goldGood?String(gs.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",goldGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",benchRatioReady(goldHist)?num(goldHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(goldHist)?"Pesquisa":benchReady(goldHist)?"Aguardando LIVE":"Pendente",percentileInfo(goldHist)]
