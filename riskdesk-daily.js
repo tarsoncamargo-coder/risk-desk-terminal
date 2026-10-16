@@ -87,7 +87,8 @@ function show(data,errors){
  const gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked),fed=data.fed?.[0];
  const nqGood=/PASS|READY|OK/.test(String(ns?.quality_status||"").toUpperCase())&&recent(ns?.source_minute_utc)&&Number(ns?.contiguous_returns_60m)>=60&&ok(ns?.sigma_60m_points);
  const goldGood=gs?.source_state==="MGC_CLOSED_M1_SIGMA_RESEARCH_QUALITY_PASS"&&recent(gs?.source_last_minute_utc)&&ok(gs.sigma_60m_points);
- const nqFresh=nq?.fresh_data===true&&recent(nq.market_timestamp_utc);
+ const nqIsHistorical=String(nq?.status||"").includes("HISTORICAL_PR_RECONSTRUCTION");
+ const nqFresh=!nqIsHistorical&&nq?.fresh_data===true&&recent(nq.market_timestamp_utc);
  const goldFresh=gold?.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&recent(gold.market_bar_minute_utc);
  // Variações J14C de 15m pertencem a snapshots internos não publicados no Data API.
  // Nunca inferir os percentuais do estado de saúde ou de séries não sincronizadas.
@@ -136,7 +137,7 @@ function show(data,errors){
  const nqRows=[...([5,15,30,60].map(k=>mkSigma(ns,k,nqGood))),
  ["Preço atual do NQ","—","—","—","—","Restrito","Cotação bruta não redistribuída nesta API pública"],
  ["Bandas desde PR · ±σ15","—","—","—","—","Pendente","Exigem PR absoluto autorizado e sigma congelada no instante da captura"],
- ["PR congelado",nq?.price_reference_is_frozen?"Capturado":"—","—","—","—",nq?"Contexto":"Indisponível",nq?.status||""],
+ ["PR congelado",nqIsHistorical?"Reconstruído":nq?.price_reference_is_frozen?"Congelado":"—","—","—","—",nqIsHistorical?"Histórico":nqFresh?"Contexto":nq?"Atrasado":"Indisponível",nq?.status||""],
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário",benchReady(nqHist)&&ok(nqHist.previous_sigma15_points)?"±"+num(nqHist.previous_sigma15_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",nqHist?.previous_globex_session_date?(nqHist.previous_globex_session_date+" · MNQ proxy histórico, não NQ"):"Sessão anterior ainda não importada"],
@@ -150,7 +151,7 @@ function show(data,errors){
  const gRows=[...([5,15,30,60].map(k=>mkSigma(gs,k,goldGood))),
  ["Preço atual do MGC","—","—","—","—","Restrito","Cotação bruta não redistribuída nesta API pública"],
  ["Bandas desde PR · ±σ15","—","—","—","—","Pendente","Exigem PR absoluto autorizado e sigma congelada no instante da captura"],
- ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
+ ["PR congelado",gold?.reference_locked?"Congelado":"—","—","—","—",goldFresh?"Contexto":gold?"Atrasado":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário",benchReady(goldHist)&&ok(goldHist.previous_sigma15_points)?"±"+num(goldHist.previous_sigma15_points)+" pts":"—","—","—","—",benchReady(goldHist)?"Histórico":"Pendente",goldHist?.previous_globex_session_date?(goldHist.previous_globex_session_date+" · MGC, mesmo vencimento e faixa de 5min"):"Sessão anterior ainda não importada"],
@@ -162,7 +163,7 @@ function show(data,errors){
  ];
  renderTable("rdDailyGold","RADAR OURO · MGC",gRows,"Mediana e percentis Globex V3: reconstruídos dos M1 completos por contrato, referência de 5min; índice somente com sigma LIVE recente e alinhada. Sem autorização de trading.");
  put("rdDailyStamp","Consulta: "+stamp(new Date().toISOString())+" BRT"+(errors.length?" · Falha de fontes: "+errors.join(", "):""));
- put("rdDailyToday","NQ σ "+(nqGood?"ATUAL":"PENDENTE")+" · Ouro σ "+(goldGood?"ATUAL":"PENDENTE")+" · Radar macro "+(coverageOk?"FONTE VALIDADA":"SEM VARIAÇÕES 15M PÚBLICAS"));
+ put("rdDailyToday","NQ σ "+(nqGood?"ATUAL":"PENDENTE")+" · Ouro σ "+(goldGood?"ATUAL":"PENDENTE")+" · Variações macro 15m NÃO PUBLICADAS"+(coverageOk?" · status das fontes válido":""));
 }
 async function load(){
  if(typeof api!=="function"){put("rdDailyStamp","API Supabase indisponível");return}
