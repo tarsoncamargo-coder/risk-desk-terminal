@@ -22,6 +22,10 @@
 .rd-orch__links a,.rd-orch__links button{border:1px solid #375067;background:#101e2a;color:#99d5ec;border-radius:6px;padding:8px 11px;text-decoration:none;cursor:pointer;font:inherit;font-size:11px}
 .rd-orch__links a:hover,.rd-orch__links button:hover{background:#17324a;border-color:#5195b7}
 .rd-orch__list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.rd-orch__session{border:1px solid #304452;background:#0b151e;border-radius:7px;padding:12px;min-width:0}
+.rd-orch__session>.rd-orch__title{margin-bottom:9px;font-size:13px}
+.rd-orch__session>.rd-orch__line{margin-top:6px}
+.rd-orch__session>.rd-orch__detail{margin-top:8px}
 .rd-orch__line{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border:1px solid #283844;background:#0f171f;padding:10px;border-radius:6px;min-height:65px}
 .rd-orch__line-title{font-size:12px;font-weight:720;color:#e0edf4}
 .rd-orch__line-content{font-size:11px;color:#abc1cc;line-height:1.4;max-width:65%;text-align:right}
