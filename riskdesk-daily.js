@@ -80,8 +80,8 @@ function show(data,errors){
  const c=data.context?.[0],snap=data.snap?.[0],ns=data.nqSigma?.[0],nq=(data.nqPR||[]).find(x=>x.asset==="NQ"&&x.price_reference_is_frozen);
  const benchmarks=data.globexBench||[],nqHist=benchmarks.find(x=>x.asset==="NQ"),goldHist=benchmarks.find(x=>x.asset==="MGC");
  const benchReady=x=>x?.data_regime==="HISTORICO_M1_GLOBEX_V3_PESQUISA"&&x?.trading_authorized===false&&recent(x?.refreshed_at_utc,3)&&x?.asof_globex_session_date===x?.live_globex_session_date&&Number(x?.comparable_globex_sessions)>=20&&ok(x?.median_15m_points);
- const benchRatioReady=x=>benchReady(x)&&x.asset==="MGC"&&x.research_status==="HISTORICAL_RESEARCH_COMPARISON_READY"&&recent(x?.live_bar_minute_utc,6)&&ok(x?.expansion_ratio);
- const benchInfo=x=>!x?"Referência M1 V3 não consultada":x.asset==="NQ"?"Proxy MNQ "+(x.historical_contract||"")+" · "+Number(x.comparable_globex_sessions||0)+" sessões anteriores · paridade com NQ pendente · pesquisa":(Number(x.comparable_globex_sessions||0)+" sessões anteriores · faixa "+(x.comparison_clock_brt||"—")+" BRT · "+(x.historical_contract||"")+" · V3 pesquisa");
+ const benchRatioReady=x=>benchReady(x)&&((x.asset==="MGC"&&x.research_status==="HISTORICAL_RESEARCH_COMPARISON_READY")||(x.asset==="NQ"&&x.research_status==="MNQ_PROXY_RESEARCH_COMPARISON_READY"&&x.historical_provenance==="MNQ_PROXY_RESEARCH_QA_199_WINDOWS_NONOPERATIVE"))&&recent(x?.live_bar_minute_utc,6)&&ok(x?.expansion_ratio);
+ const benchInfo=x=>!x?"Referência M1 V3 não consultada":x.asset==="NQ"?"Proxy MNQ "+(x.historical_contract||"")+" · "+Number(x.comparable_globex_sessions||0)+" sessões anteriores · QA 199 janelas, p95 9,04% · somente pesquisa":(Number(x.comparable_globex_sessions||0)+" sessões anteriores · faixa "+(x.comparison_clock_brt||"—")+" BRT · "+(x.historical_contract||"")+" · V3 pesquisa");
  const percentileInfo=x=>benchReady(x)?("P75: ±"+num(x.p75_15m_points)+" pts · P90: ±"+num(x.p90_15m_points)+" pts · pesquisa histórica"):"Sem percentis Globex validados neste contrato";
 
  const gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked),fed=data.fed?.[0];
@@ -112,9 +112,9 @@ function show(data,errors){
  ["σ anterior · mesmo horário",benchReady(nqHist)&&ok(nqHist.previous_sigma15_points)?"±"+num(nqHist.previous_sigma15_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",nqHist?.previous_globex_session_date?(nqHist.previous_globex_session_date+" · MNQ proxy histórico, não NQ"):"Sessão anterior ainda não importada"],
  ["σ mediana histórica · horário",benchReady(nqHist)?"±"+num(nqHist.median_15m_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",benchInfo(nqHist)],
  ["Expansão / compressão",nqGood?String(ns.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",nqGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
- ["Índice expansão vs. mediana",benchRatioReady(nqHist)?num(nqHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(nqHist)?"Pesquisa":"Pendente",percentileInfo(nqHist)]
+ ["Índice expansão vs. mediana · proxy MNQ",benchRatioReady(nqHist)?num(nqHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(nqHist)?"Pesquisa":"Pendente",percentileInfo(nqHist)]
  ];
- renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Histórico MNQ V3: possui 20+ sessões por horário, mas a paridade MNQ/NQ ainda não foi aprovada. Expansão bloqueada. Volatilidade LIVE: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
+ renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Histórico MNQ V3: proxy QA por 199 comparações de σ15 (p95 9,04%). Índice apenas de pesquisa em fechamento alinhado de 5 minutos; não autorizado para trading. Volatilidade LIVE: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
  const gRows=[...([5,15,30,60].map(k=>mkSigma(gs,k,goldGood))),
  ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
