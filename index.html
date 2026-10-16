@@ -60,6 +60,16 @@
  <div id="goldReferenceDetails" class="rd-orch__list"><div class="rd-orch__note">Aguardando primeiro PR registrado com mercado e ponte ativos.</div></div>
  <div class="rd-orch__note">A página pública não redistribui o preço bruto do contrato CME. Futuramente o PR e os níveis absolutos podem aparecer em um painel autenticado com autorização adequada de dados.</div>
 </section>
+<section class="rd-orch rd-orch--subtle" aria-label="Resumo quantitativo do Ouro">
+ <div class="rd-orch__title">Movimento desde o PR · leitura quantitativa</div>
+ <div class="rd-orch__grid">
+  <div class="rd-orch__tile"><div class="rd-orch__key">Sessão de referência</div><div class="rd-orch__value" id="goldActiveSession">—</div><div class="rd-orch__detail">Um único PR vigente; sem recalcular o preço de abertura</div></div>
+  <div class="rd-orch__tile"><div class="rd-orch__key">Distância desde PR</div><div class="rd-orch__value" id="goldMovementPoints">—</div><div class="rd-orch__detail" id="goldMovementPct">—</div></div>
+  <div class="rd-orch__tile"><div class="rd-orch__key">Distância / σ15</div><div class="rd-orch__value" id="goldDistance15">—</div><div class="rd-orch__detail">Contexto estatístico; não é probabilidade</div></div>
+  <div class="rd-orch__tile"><div class="rd-orch__key">Distância / σ60</div><div class="rd-orch__value" id="goldDistance60">—</div><div class="rd-orch__detail">Somente quando sigma e mercado estiverem válidos</div></div>
+ </div>
+ <div class="rd-orch__note" id="goldDataQuality">Aguardando leitura validada do Supabase.</div>
+</section>
 <section class="rd-orch rd-orch--subtle">
  <div class="rd-orch__title">Confluência macro · ouro (em validação)</div>
  <div class="rd-orch__list">
@@ -122,7 +132,7 @@
 <script src="j14g-official-releases.js"></script>
 <script src="j14h-volatility.js"></script>
 <script src="riskdesk-unified.js"></script>
-<script src="riskdesk-gold.js?v=j15-card-pr-20261016"></script>
+<script src="riskdesk-gold.js?v=j15-dashboard-v3-20261016"></script>
 <script src="riskdesk-event-agenda.js"></script>
 <script src="mt5-shadow-hoje.js"></script>
 <script src="market-visual-live.js"></script>
