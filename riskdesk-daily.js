@@ -7,6 +7,17 @@ const num=(v,d=2)=>ok(v)?Number(v).toLocaleString("pt-BR",{minimumFractionDigits
 const sign=v=>ok(v)?(Number(v)>0?"↑ +":Number(v)<0?"↓ ":"→ ")+num(v,2):"—";
 const stamp=v=>{const t=Date.parse(v||"");return Number.isFinite(t)?new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",dateStyle:"short",timeStyle:"short"}).format(t):"—"};
 const recent=(v,m=6)=>{const t=Date.parse(v||"");return Number.isFinite(t)&&(Date.now()-t)/60000>=-2&&(Date.now()-t)/60000<=m};
+// Relógio regular dos futuros CME Globex (NY): fechamento sexta 17h ET,
+// reabertura domingo 18h ET; pausas diárias 17–18h ET.
+// DST aplicado pela zona America/New_York. Exceções/feriados exigem calendário externo.
+const futuresGlobexRegularClosed=(at=new Date())=>{
+ const parts=Object.fromEntries(
+  new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"2-digit",hourCycle:"h23"})
+   .formatToParts(at).filter(x=>x.type==="weekday"||x.type==="hour").map(x=>[x.type,x.value]));
+ const d=parts.weekday,h=Number(parts.hour);
+ return d==="Sat"||(d==="Sun"&&h<18)||(d==="Fri"&&h>=17)||
+  (["Mon","Tue","Wed","Thu"].includes(d)&&h>=17&&h<18);
+};
 const put=(id,s)=>{if($(id))$(id).textContent=s};
 const mk=(tag,cl,txt)=>{const e=document.createElement(tag);e.className=cl;e.textContent=txt;return e};
 const request=(table,params)=>api(table,params).then(v=>Array.isArray(v)?v:[]);
@@ -120,6 +131,7 @@ function show(data,errors){
  // Variações J14C de 15m pertencem a snapshots internos não publicados no Data API.
  // Nunca inferir os percentuais do estado de saúde ou de séries não sincronizadas.
  const macroContextRecent=recent(c?.assessed_at_utc,6);
+ const futuresClosed=futuresGlobexRegularClosed();
  const healthByKey=new Map((data.health||[]).map(x=>[x.item_key,x]));
  const marketHealth=k=>{
   const h=healthByKey.get(k);
@@ -127,7 +139,8 @@ function show(data,errors){
   const status=String(h.diagnostic_status||"").toUpperCase();
   if(status.includes("OUTSIDE_EXPECTED")||status.includes("FORA_SESSAO"))return "Fora sessão";
   if(status.includes("FAILED")||status.includes("INVALID"))return "Inválido";
-  if(status.includes("STALE")||status.includes("DELAYED"))return "Atrasado";
+  if(status.includes("STALE")||status.includes("DELAYED"))
+   return futuresClosed&&["ASSET_NQ","ASSET_ZT","ASSET_ZN"].includes(k)?"Fora sessão":"Atrasado";
   if(status.includes("FRESH")||status.includes("OK"))return "Contexto";
   return "Sem leitura";
  };
@@ -135,11 +148,17 @@ function show(data,errors){
  const goldExpansion=benchRatioReady(goldHist)?Number(goldHist.expansion_ratio):null;
  const formatExpansion=v=>v===null?"SEM COMPARAÇÃO":(num(v,2)+"× · "+(v>=1.25?"EXPANSÃO":v<0.8?"COMPRESSÃO":"FAIXA USUAL"));
  const coverageOk=macroContextRecent&&String(c?.research_data_status||"").toUpperCase().includes("READY");
- put("rdDailyMacroState",!macroContextRecent||!c?.fresh_sources?"SEM DADOS FRESCOS":(c.fresh_sources||0)+"/"+(c.total_sources||4)+" FONTES FRESCAS");
- put("rdDailyNqState",nqGood&&ok(ns?.sigma_15m_points)?"σ15 ±"+num(ns.sigma_15m_points)+" pts":"SIGMA INDISPONÍVEL");
- put("rdDailyGoldState",goldGood&&ok(gs?.sigma_15m_points)?"σ15 ±"+num(gs.sigma_15m_points)+" pts":"SIGMA INDISPONÍVEL");
- put("rdDailyNqDetail",formatExpansion(nqExpansion)+" · histórico MNQ proxy / pesquisa");
- put("rdDailyGoldDetail",formatExpansion(goldExpansion)+" · histórico MGC / pesquisa");
+ put("rdDailyMacroState",!macroContextRecent||!c?.fresh_sources?
+  (futuresClosed?"FUTUROS FECHADOS":"SEM DADOS FRESCOS"):
+  (c.fresh_sources||0)+"/"+(c.total_sources||4)+" FONTES FRESCAS");
+ put("rdDailyNqState",nqGood&&ok(ns?.sigma_15m_points)?"σ15 ±"+num(ns.sigma_15m_points)+" pts":
+  futuresClosed?"MERCADO FECHADO":"SIGMA INDISPONÍVEL");
+ put("rdDailyGoldState",goldGood&&ok(gs?.sigma_15m_points)?"σ15 ±"+num(gs.sigma_15m_points)+" pts":
+  futuresClosed?"MERCADO FECHADO":"SIGMA INDISPONÍVEL");
+ put("rdDailyNqDetail",futuresClosed&&!nqGood?"Sem sigma LIVE · histórico MNQ proxy disponível para pesquisa":
+  formatExpansion(nqExpansion)+" · histórico MNQ proxy / pesquisa");
+ put("rdDailyGoldDetail",futuresClosed&&!goldGood?"Sem sigma LIVE · histórico MGC disponível para pesquisa":
+  formatExpansion(goldExpansion)+" · histórico MGC / pesquisa");
  const mkHealthRow=(label,k)=>[label,"—","—","—",null,marketHealth(k),"Fonte: "+(healthByKey.get(k)?.source_name||"não identificada")+" · "+(healthByKey.get(k)?.explanation_pt||"sem delta 15m saneado")];
  const fedProjection=recent(fed?.calculated_at_utc,1440)&&
     fed?.source==="NYFED_EFFR_CALENDAR_WEIGHTED_PROJECTION"&&
