@@ -46,7 +46,7 @@ function card(host,title,sub,items){
   top.append(light(tone),mk("div","rd-daily-label",label));
   const val=mk("div","rd-daily-value","");
   if(movement&&String(value)!=="—"){val.append(mk("span","rd-daily-arrow",String(value).startsWith("↑")?"↑":String(value).startsWith("↓")?"↓":"→"));}
-  val.append(document.createTextNode(String(value)));
+  val.append(document.createTextNode(movement?String(value).replace(/^[↑↓→]\\s*/,""):String(value)));
   cell.append(top,val,mk("div","rd-daily-muted",detail||""));grid.append(cell);
  }
  root.append(grid);
