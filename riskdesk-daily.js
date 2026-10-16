@@ -19,17 +19,42 @@ const sources=[
  ["health","riskdesk_j14a_live_health_site_v1","select=*&order=sort_index.asc&limit=25"],
  ["fed","riskdesk_j14e_zq_weighted_site_v1","select=*&order=month_first.asc&limit=2"]
 ];
+function statusTone(value){
+ const s=String(value||"").toUpperCase();
+ if(!s||s==="—")return "neutral";
+ if(/STALE|NOT_60|PENDING|WARM|INDETERMIN|AGUARDANDO|RECONSTRUCT|PARTIAL/.test(s))return "warning";
+ if(/UNAVAILABLE|ERROR|FAIL|MISSING|SEM LEITURA|NÃO VALIDADO/.test(s))return "negative";
+ if(/READY|PASS|OK|VALID|RECENT|CAPTURADO|CONGELADO/.test(s))return "positive";
+ return "neutral";
+}
+function numberTone(value){
+ if(!Number.isFinite(Number(value)))return "neutral";
+ return Number(value)>0?"up":Number(value)<0?"down":"neutral";
+}
+function light(tone){return mk("span","rd-daily-light rd-daily-light--"+tone,"");}
 function card(host,title,sub,items){
  const root=$(host);if(!root)return;root.replaceChildren();
- root.append(mk("div","rd-daily-title",title),mk("div","rd-daily-muted",sub));
+ const head=mk("div","rd-daily-head","");
+ head.append(mk("div","rd-daily-title",title),mk("span","rd-daily-pill","PESQUISA"));
+ root.append(head,mk("div","rd-daily-muted rd-daily-description",sub));
  const grid=mk("div","rd-daily-grid","");
- for(const [label,value,detail] of items){const c=mk("article","rd-daily-cell","");c.append(mk("div","rd-daily-label",label),mk("div","rd-daily-value",value),mk("div","rd-daily-muted",detail||""));grid.append(c)}
+ for(const [label,value,detail] of items){
+  const movement=/^Distância desde PR$/.test(label);
+  const tone=movement&&String(value)!=="—"?numberTone(String(value).replace(/[^0-9,.-]/g,"").replace(",", ".")):statusTone(value);
+  const cell=mk("article","rd-daily-cell rd-daily-cell--"+tone,"");
+  const top=mk("div","rd-daily-cell-top","");
+  top.append(light(tone),mk("div","rd-daily-label",label));
+  const val=mk("div","rd-daily-value","");
+  if(movement&&String(value)!=="—"){val.append(mk("span","rd-daily-arrow",String(value).startsWith("↑")?"↑":String(value).startsWith("↓")?"↓":"→"));}
+  val.append(document.createTextNode(String(value)));
+  cell.append(top,val,mk("div","rd-daily-muted",detail||""));grid.append(cell);
+ }
  root.append(grid);
 }
 function show(data,errors){
  const c=data.context?.[0],ns=data.nqSigma?.[0],nq=(data.nqPR||[]).find(x=>x.asset==="NQ"&&x.price_reference_is_frozen),gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked);
  const health=data.health||[], fed=data.fed?.[0];
- const nqGood=ns?.quality_status&&recent(ns.source_minute_utc)&&ok(ns.sigma_60m_points)&&Number(ns.contiguous_returns_60m)>=60;
+ const nqGood=/PASS|READY|OK/.test(String(ns?.quality_status||"").toUpperCase())&&recent(ns.source_minute_utc)&&ok(ns.sigma_60m_points)&&Number(ns.contiguous_returns_60m)>=60;
  const goldGood=gs?.source_state==="MGC_CLOSED_M1_SIGMA_RESEARCH_QUALITY_PASS"&&recent(gs.source_last_minute_utc)&&ok(gs.sigma_60m_points);
  const nqPrLive=!!nq&&nq.fresh_data===true&&recent(nq.market_timestamp_utc);
  const goldPrLive=!!gold&&gold.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&recent(gold.market_bar_minute_utc);
