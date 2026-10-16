@@ -18,8 +18,8 @@ const sources=[
  ["goldPR","riskdesk_j15_gold_pr_site_v1","select=*&order=anchor_minute_utc.desc&limit=5"],
  ["health","riskdesk_j14a_live_health_site_v1","select=*&order=sort_index.asc&limit=25"],
  ["fed","riskdesk_j14e_zq_weighted_site_v1","select=*&order=month_first.asc&limit=2"],
- ["globexBench","riskdesk_sigma_globex_live_benchmark_research_site_v1","select=*&limit=2"],
- ["importReadiness","riskdesk_sigma_import_readiness_site_v1","select=asset,loaded_rows,expected_rows,state&limit=2"]
+ ["globexBench","riskdesk_sigma_globex_research_cache_site_v3","select=*&limit=2"],
+
 ];
 function statusTone(value){
  const s=String(value||"").toUpperCase();
@@ -78,12 +78,10 @@ function changePct(x){return ok(x)?(Number(x)>0?"+":"")+num(x,3)+"%":"—"}
 function statusFrom(ts,other){if(!other)return "Indisponível";if(!ts)return "Contexto";return recent(ts)?"Atualizado":"Atrasado"}
 function show(data,errors){
  const c=data.context?.[0],snap=data.snap?.[0],ns=data.nqSigma?.[0],nq=(data.nqPR||[]).find(x=>x.asset==="NQ"&&x.price_reference_is_frozen);
- const readiness=data.importReadiness||[],nqImport=readiness.find(x=>x.asset==="MNQ"),goldImport=readiness.find(x=>x.asset==="MGC");
- const importedLabel=x=>x?(Number(x.loaded_rows||0).toLocaleString("pt-BR")+"/"+Number(x.expected_rows||0).toLocaleString("pt-BR") + " linhas · HISTÓRICO"):"importação não consultada";
  const benchmarks=data.globexBench||[],nqHist=benchmarks.find(x=>x.asset==="NQ"),goldHist=benchmarks.find(x=>x.asset==="MGC");
- const benchReady=x=>x?.data_regime==="HISTORICO_GLOBEX_RECONSTRUIDO_PESQUISA"&&x?.trading_authorized===false&&Number(x?.comparable_globex_sessions)>=20&&ok(x?.median_15m_points);
- const benchRatioReady=x=>benchReady(x)&&x.research_status==="HISTORICAL_RESEARCH_COMPARISON_READY"&&ok(x?.expansion_ratio);
- const benchInfo=x=>!x?"Referência Globex não consultada":x.asset==="NQ"?"Proxy MNQ "+(x.historical_contract||"")+" · menos de 20 sessões anteriores por contrato · pesquisa":(Number(x.comparable_globex_sessions||0)+"/20 sessões anteriores · "+(x.comparison_clock_brt||"—")+" BRT · "+(x.historical_contract||"")+" · pesquisa");
+ const benchReady=x=>x?.data_regime==="HISTORICO_M1_GLOBEX_V3_PESQUISA"&&x?.trading_authorized===false&&recent(x?.refreshed_at_utc,3)&&x?.asof_globex_session_date===x?.live_globex_session_date&&Number(x?.comparable_globex_sessions)>=20&&ok(x?.median_15m_points);
+ const benchRatioReady=x=>benchReady(x)&&x.asset==="MGC"&&x.research_status==="HISTORICAL_RESEARCH_COMPARISON_READY"&&recent(x?.live_bar_minute_utc,6)&&ok(x?.expansion_ratio);
+ const benchInfo=x=>!x?"Referência M1 V3 não consultada":x.asset==="NQ"?"Proxy MNQ "+(x.historical_contract||"")+" · "+Number(x.comparable_globex_sessions||0)+" sessões anteriores · paridade com NQ pendente · pesquisa":(Number(x.comparable_globex_sessions||0)+" sessões anteriores · faixa "+(x.comparison_clock_brt||"—")+" BRT · "+(x.historical_contract||"")+" · V3 pesquisa");
  const percentileInfo=x=>benchReady(x)?("P75: ±"+num(x.p75_15m_points)+" pts · P90: ±"+num(x.p90_15m_points)+" pts · pesquisa histórica"):"Sem percentis Globex validados neste contrato";
 
  const gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked),fed=data.fed?.[0];
@@ -112,21 +110,21 @@ function show(data,errors){
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
- ["σ mediana histórica · horário",benchReady(nqHist)?"±"+num(nqHist.median_15m_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",benchInfo(nqHist)+" · "+importedLabel(nqImport)],
+ ["σ mediana histórica · horário",benchReady(nqHist)?"±"+num(nqHist.median_15m_points)+" pts":"—","—","—","—",benchReady(nqHist)?"Histórico":"Pendente",benchInfo(nqHist)],
  ["Expansão / compressão",nqGood?String(ns.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",nqGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",benchRatioReady(nqHist)?num(nqHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(nqHist)?"Pesquisa":"Pendente",percentileInfo(nqHist)]
  ];
- renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Histórico MNQ: proxy de pesquisa, contratos mantidos separados e sem 20 sessões Globex anteriores. Volatilidade LIVE: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
+ renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Histórico MNQ V3: possui 20+ sessões por horário, mas a paridade MNQ/NQ ainda não foi aprovada. Expansão bloqueada. Volatilidade LIVE: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
  const gRows=[...([5,15,30,60].map(k=>mkSigma(gs,k,goldGood))),
  ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
  ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
- ["σ mediana histórica · horário",benchReady(goldHist)?"±"+num(goldHist.median_15m_points)+" pts":"—","—","—","—",benchReady(goldHist)?"Histórico":"Pendente",benchInfo(goldHist)+" · "+importedLabel(goldImport)],
+ ["σ mediana histórica · horário",benchReady(goldHist)?"±"+num(goldHist.median_15m_points)+" pts":"—","—","—","—",benchReady(goldHist)?"Histórico":"Pendente",benchInfo(goldHist)],
  ["Expansão / compressão",goldGood?String(gs.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",goldGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
  ["Índice expansão vs. mediana",benchRatioReady(goldHist)?num(goldHist.expansion_ratio)+"×":"—","—","—","—",benchRatioReady(goldHist)?"Pesquisa":benchReady(goldHist)?"Aguardando LIVE":"Pendente",percentileInfo(goldHist)]
  ];
- renderTable("rdDailyGold","RADAR OURO · MGC",gRows,"Mediana e percentis Globex: histórico de pesquisa reconstruído a partir de amostras previamente selecionadas; índice somente com sigma LIVE recente. Sem autorização de trading.");
+ renderTable("rdDailyGold","RADAR OURO · MGC",gRows,"Mediana e percentis Globex V3: reconstruídos dos M1 completos por contrato, referência de 5min; índice somente com sigma LIVE recente e alinhada. Sem autorização de trading.");
  put("rdDailyStamp","Consulta: "+stamp(new Date().toISOString())+" BRT"+(errors.length?" · Falha de fontes: "+errors.join(", "):""));
  put("rdDailyToday","NQ σ "+(nqGood?"ATUAL":"PENDENTE")+" · Ouro σ "+(goldGood?"ATUAL":"PENDENTE")+" · Radar macro "+(aligned?"15m":"SEM ATUALIZAÇÃO"));
 }
