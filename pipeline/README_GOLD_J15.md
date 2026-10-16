@@ -5,7 +5,7 @@
 1. \`pipeline/RiskDeskGoldBridgeJ15.cs\`: indicador NinjaTrader 8 SOMENTE DADOS, para usar em um gráfico **MGC 1 minuto**. Registra uma linha CSV por barra confirmada no \`State.Realtime\`, contendo Open/Close/Volume e horário UTC carimbado no fim da barra. Não desenha ou envia ordens.
 2. \`pipeline/riskdesk_gold_uploader_j15.py\`: lê o CSV e envia os dados para \`riskdesk_j15_gold_m1_closed_v1\`, privada, utilizando as variáveis de ambiente **já configuradas** para o Risk Desk no Windows. Não envia NQ ou outros ativos.
 3. \`pipeline/start_riskdesk_gold_j15.ps1\`: comando de inicialização local do uploader, SEM criar nova tarefa do Windows automaticamente.
-4. Supabase privado: sigma MGC 5/15/30/60 com 60 retornos M1 consecutivos e PR da sessão em 19h BRT / 09h30 ET com primeira abertura da vela M1. O PR não é reajustado. Os pontos da sigma mudam a cada janela móvel; as distâncias são separadas.
+4. Supabase privado: sigma MGC 5/15/30/60 com 60 retornos M1 consecutivos e três PRs independentes: **Ásia 21h Brasília, Londres 04h Brasília e Nova York 09h30 Brasília**. Abertura da primeira vela M1 de cada horário; cada PR é congelado e nunca reajustado. São horários operacionais definidos pelo usuário, não necessariamente as aberturas oficiais das bolsas. Os pontos da sigma mudam a cada janela móvel; as distâncias são separadas.
 5. Risk Desk GitHub Pages: aba **Ouro** e resumo na aba **Hoje**. Resultado vazio/indisponível até haver MGC real.
 
 ## Configurar no computador UMA vez
@@ -28,7 +28,7 @@
 - Uploader idempotente, credencial local, tabela privada, sinalizadores de qualidade.
 - Sigma de ouro é desvio-padrão dos retornos log M1 ajustado para horizonte \`sqrt(5/15/30/60)\`, em **USD/oz de preço MGC**. Não é valor financeiro por contrato, DP/CME/IV nem VXN.
 - Para a comparação com o dia anterior e 20–40 sessões por horário, será necessário coletar suficiente histórico M1 de MGC do mesmo contrato ou validar método de ajuste de rollover; os 10.290 registros CLEAN V8 são **histórico macro**, não candles de ouro.
-- PR congelado: **Open da primeira barra M1 encerrada imediatamente após 19h Brasília e 09h30 Nova York**, quando capturada dentro da janela do evento. Independente do PR das opções.
+- PRs congelados: **Open da primeira barra M1 encerrada imediatamente depois das 21h (Ásia), 04h (Londres) e 09h30 (NY), todos no fuso America/Sao_Paulo**. Captura somente nos dez primeiros minutos do respectivo horário, se o coletor tiver enviado o candle M1 real. Sem backfill tardio ou PR inventado. Cada PR independe dos demais e do PR das opções. A janela NY de 09h30 BRT não equivale necessariamente à abertura oficial de Nova York.
 
 ## Limites e segurança
 
@@ -36,3 +36,10 @@
 - O uploader requer a mesma secret local do Risk Desk; não crie variáveis na página pública nem envie tokens para o chat.
 - Não foram modificados nem recompilados: Laranjinha, J7A NQ/ZQ/ZT/ZN, GEN1/GEN2, Market State, opções/DP/CW/PW/GF/GEX, CLEAN V8.
 - **Code reviewed, but runtime/compile verification was not available in this environment.**
+
+## Atualização J15 — três PRs por dia (horário de Brasília)
+
+- O coletor NinjaScript e o uploader Python existentes continuam idênticos: **nenhum novo arquivo local precisa ser instalado** para alterar os horários.
+- Capturas automáticas no Supabase a cada minuto em: Ásia 21h00, Londres 04h00 e NY operacional 09h30, sempre **America/Sao_Paulo**.
+- O banco mantém separadamente uma referência imutável por contrato, data e sessão; a aba Ouro mostra os três painéis e não exibe cotações brutas em páginas públicas.
+- A primeira referência válida somente será registrada se a ponte MGC M1 estiver operando no horário e o registro da primeira vela encerrada entrar antes de dez minutos. Não recriar referências de janelas já encerradas.
