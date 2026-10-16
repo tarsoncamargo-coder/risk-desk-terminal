@@ -21,7 +21,7 @@ const load=async()=>{
  if(typeof api!=="function")throw new Error("Supabase API missing");
  const [s,r]=await Promise.all([
   api("riskdesk_j15_gold_sigma_site_v1","select=calculated_at_utc,source_last_minute_utc,contract_month_label,sigma_5m_points,sigma_15m_points,sigma_30m_points,sigma_60m_points,sigma_15m_pct,sigma_60m_pct,n15,n60,volatility_regime,source_state&id=eq.1&limit=1"),
-  api("riskdesk_j15_gold_pr_site_v1","select=contract,session_code,session_date,updated_at_utc,anchor_minute_utc,market_bar_minute_utc,reference_locked,last_movement_usd_per_oz,last_movement_pct,sigma15_multiples,sigma60_multiples,freshness&order=session_date.desc&limit=10")
+  api("riskdesk_j15_gold_pr_site_v1","select=contract,session_code,session_date,updated_at_utc,anchor_minute_utc,market_bar_minute_utc,reference_locked,last_movement_usd_per_oz,last_movement_pct,sigma15_multiples,sigma60_multiples,freshness&order=anchor_minute_utc.desc&limit=10")
  ]);
  return {sigma:Array.isArray(s)?s[0]||null:null,refs:Array.isArray(r)?r:[]};
 };
@@ -45,41 +45,41 @@ function drawOne(s,refs){
  const root=el("goldReferenceDetails");
  if(root){
   root.replaceChildren();
-  const sessions=[
-   {code:"ASIA_2100_BRT",name:"Ásia · 21h00 Brasília"},
-   {code:"LONDON_0400_BRT",name:"Londres · 04h00 Brasília"},
-   {code:"NY_0930_BRT",name:"Nova York · 09h30 Brasília"}
-  ];
-  for(const session of sessions){
-   const group=node("section","","rd-orch__session");
-   group.append(node("div",session.name,"rd-orch__title"));
-   const active=refs.filter(x=>x.session_code===session.code)
-    .sort((a,b)=>String(b.session_date).localeCompare(String(a.session_date)))[0];
-   if(!active){
-    group.append(node("p","PR ainda não capturado. Aguardando a primeira vela M1 desta sessão com ponte ativa.","rd-orch__detail"));
-   }else{
-    const isCurrent=active.reference_locked===true&&
-     active.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&fresh(active.market_bar_minute_utc);
-    const lastCloseFresh=fresh(active.market_bar_minute_utc);
-    const movement=valid(active.last_movement_usd_per_oz)?
-     (Number(active.last_movement_usd_per_oz)>0?"+":"")+n(active.last_movement_usd_per_oz,2)+" pts · "+
-     (Number(active.last_movement_pct)>0?"+":"")+n(active.last_movement_pct,4)+"%"+
-     (lastCloseFresh?"":" (DESATUALIZADO)"):"—";
-    const lines=[
-     ["Sessão / data",session.name+" · "+active.session_date],
-     ["PR fixado",clock(active.anchor_minute_utc)+" (abertura M1; preço absoluto protegido)"],
-     ["Variação desde PR",movement],
-     ["Distância / σ15",isCurrent&&valid(active.sigma15_multiples)?n(active.sigma15_multiples,2)+" σ":"Indisponível ou amostra antiga"],
-     ["Distância / σ60",isCurrent&&valid(active.sigma60_multiples)?n(active.sigma60_multiples,2)+" σ":"Indisponível ou amostra antiga"],
-     ["Último fechamento",clock(active.market_bar_minute_utc)+" (BRT) · "+(isCurrent?"Recente":"DESATUALIZADO")]
-    ];
-    for(const [name,value] of lines){
-     const row=node("div","","rd-orch__line");
-     row.append(node("span",name,"rd-orch__line-title"),node("span",value,"rd-orch__line-content"));
-     group.append(row);
-    }
+  // All three session checkpoints stay in the private history, but only
+  // the most recently captured immutable reference appears on the website.
+  const labels={
+   "ASIA_2100_BRT":"Ásia · 21h00 Brasília",
+   "LONDON_0400_BRT":"Londres · 04h00 Brasília",
+   "NY_0930_BRT":"Nova York · 09h30 Brasília"
+  };
+  const active=refs.filter(x=>x.reference_locked===true&&
+    Object.prototype.hasOwnProperty.call(labels,x.session_code)&&
+    Number.isFinite(Date.parse(x.anchor_minute_utc??"")))
+   .sort((a,b)=>Date.parse(b.anchor_minute_utc)-Date.parse(a.anchor_minute_utc))[0];
+  if(!active){
+   root.append(node("p",
+     "PR ainda não capturado. Aguardando a próxima abertura válida: 21h, 04h ou 09h30 de Brasília, com MGC M1 e uploader ativos.",
+     "rd-orch__note"));
+  }else{
+   const isCurrent=active.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&
+     fresh(active.market_bar_minute_utc);
+   const movement=valid(active.last_movement_usd_per_oz)?
+    (Number(active.last_movement_usd_per_oz)>0?"+":"")+n(active.last_movement_usd_per_oz,2)+" pts · "+
+    (Number(active.last_movement_pct)>0?"+":"")+n(active.last_movement_pct,4)+"%"+
+    (isCurrent?"":" (DESATUALIZADO)"):"—";
+   const lines=[
+    ["Referência vigente",labels[active.session_code]+" · "+active.session_date],
+    ["PR congelado",clock(active.anchor_minute_utc)+" (abertura M1; preço absoluto protegido)"],
+    ["Variação desde PR",movement],
+    ["Distância / σ15",isCurrent&&valid(active.sigma15_multiples)?n(active.sigma15_multiples,2)+" σ":"Indisponível ou amostra antiga"],
+    ["Distância / σ60",isCurrent&&valid(active.sigma60_multiples)?n(active.sigma60_multiples,2)+" σ":"Indisponível ou amostra antiga"],
+    ["Último fechamento",clock(active.market_bar_minute_utc)+" (BRT) · "+(isCurrent?"Recente":"DESATUALIZADO")]
+   ];
+   for(const [name,value] of lines){
+    const line=node("div","","rd-orch__line");
+    line.append(node("span",name,"rd-orch__line-title"),node("span",value,"rd-orch__line-content"));
+    root.append(line);
    }
-   root.append(group);
   }
  }
  set("goldLastUpdated",clock(s?.source_last_minute_utc));
