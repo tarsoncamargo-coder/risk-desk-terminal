@@ -42,27 +42,26 @@ function drawOne(s,refs){
  set("goldSigma15Pct",good&&valid(s.sigma_15m_pct)?n(s.sigma_15m_pct,4)+"% / 15m":"Sem dados validados");
  set("goldSigma60Pct",good&&valid(s.sigma_60m_pct)?n(s.sigma_60m_pct,4)+"% / 60m":"Sem dados validados");
  set("goldRegime",good?String(s.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"INDETERMINADO");
+ const labels={
+   "ASIA_2100_BRT":"Ásia · 21h00 Brasília",
+   "LONDON_0400_BRT":"Londres · 04h00 Brasília",
+   "NY_0930_BRT":"Nova York · 09h30 Brasília"
+ };
+ const active=refs.filter(x=>x.reference_locked===true&&
+   Object.prototype.hasOwnProperty.call(labels,x.session_code)&&
+   Number.isFinite(Date.parse(x.anchor_minute_utc??"")))
+   .sort((a,b)=>Date.parse(b.anchor_minute_utc)-Date.parse(a.anchor_minute_utc))[0];
+ const isCurrent=!!active&&active.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&fresh(active.market_bar_minute_utc);
  const root=el("goldReferenceDetails");
  if(root){
   root.replaceChildren();
   // All three session checkpoints stay in the private history, but only
   // the most recently captured immutable reference appears on the website.
-  const labels={
-   "ASIA_2100_BRT":"Ásia · 21h00 Brasília",
-   "LONDON_0400_BRT":"Londres · 04h00 Brasília",
-   "NY_0930_BRT":"Nova York · 09h30 Brasília"
-  };
-  const active=refs.filter(x=>x.reference_locked===true&&
-    Object.prototype.hasOwnProperty.call(labels,x.session_code)&&
-    Number.isFinite(Date.parse(x.anchor_minute_utc??"")))
-   .sort((a,b)=>Date.parse(b.anchor_minute_utc)-Date.parse(a.anchor_minute_utc))[0];
   if(!active){
    root.append(node("p",
      "PR ainda não capturado. Aguardando a próxima abertura válida: 21h, 04h ou 09h30 de Brasília, com MGC M1 e uploader ativos.",
      "rd-orch__note"));
   }else{
-   const isCurrent=active.freshness==="REFERENCE_FROZEN_AND_BAR_RECENT"&&
-     fresh(active.market_bar_minute_utc);
    const movement=valid(active.last_movement_usd_per_oz)?
     (Number(active.last_movement_usd_per_oz)>0?"+":"")+n(active.last_movement_usd_per_oz,2)+" pts · "+
     (Number(active.last_movement_pct)>0?"+":"")+n(active.last_movement_pct,4)+"%"+
@@ -88,11 +87,23 @@ function drawOne(s,refs){
   mini.replaceChildren();
   const title=node("div","OURO / MGC · SIGMA","rd-orch__title");
   const info=node("div",good?
-   "σ15 ±"+n(s.sigma_15m_points,2)+" pts · σ60 ±"+n(s.sigma_60m_points,2)+" pts · "+
-    String(s.volatility_regime).replaceAll("_"," "):
-   warmup?"MGC conectado · "+(Math.max(0,Number(s.n60)||0))+"/60 retornos consecutivos para liberar a sigma.": 
-   "Sem MGC M1 recente; aguardando ponte NinjaTrader.","rd-orch__detail");
-  mini.append(title,info);
+   "σ5 ±"+n(s.sigma_5m_points,2)+" · σ15 ±"+n(s.sigma_15m_points,2)+
+   " · σ30 ±"+n(s.sigma_30m_points,2)+" · σ60 ±"+n(s.sigma_60m_points,2)+
+   " pts · "+String(s.volatility_regime).replaceAll("_"," "):
+   warmup?"Sigma aquecendo · "+Math.max(0,Number(s.n60)||0)+"/60 retornos M1 consecutivos.":
+   "Sigma indisponível · "+(s?.source_state||"sem dados MGC recentes")+".","rd-orch__detail");
+  const pr=node("div",active?
+   "PR vigente: "+labels[active.session_code]+" · "+active.session_date+
+   " · referência congelada"+(isCurrent&&valid(active.last_movement_usd_per_oz)?
+   " · deslocamento "+(Number(active.last_movement_usd_per_oz)>0?"+":"")+
+   n(active.last_movement_usd_per_oz,2)+" pts ("+
+   (Number(active.last_movement_pct)>0?"+":"")+n(active.last_movement_pct,4)+"%)":
+   " · deslocamento indisponível (dados antigos)")+
+   (isCurrent&&good&&valid(active.sigma15_multiples)&&valid(active.sigma60_multiples)?
+   " · "+n(active.sigma15_multiples,2)+" σ15 / "+n(active.sigma60_multiples,2)+" σ60":
+   " · múltiplos de sigma indisponíveis"):
+   "PR ainda não capturado · próximas janelas: 21h, 04h, 09h30 BRT.","rd-orch__detail");
+  mini.append(title,info,pr);
  }
 }
 async function refresh(){
@@ -103,5 +114,5 @@ async function refresh(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",refresh);
 else refresh();
-setInterval(()=>{if(document.visibilityState!=="hidden")refresh();},120000);
+setInterval(()=>{if(document.visibilityState!=="hidden")refresh();},30000);
 })();
