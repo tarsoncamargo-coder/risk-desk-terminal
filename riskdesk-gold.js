@@ -81,6 +81,16 @@ function drawOne(s,refs){
    }
   }
  }
+ set("goldActiveSession",active?labels[active.session_code]:"PR pendente");
+ set("goldMovementPoints",isCurrent&&valid(active.last_movement_usd_per_oz)?
+   (Number(active.last_movement_usd_per_oz)>0?"+":"")+n(active.last_movement_usd_per_oz,2)+" pts":"—");
+ set("goldMovementPct",isCurrent&&valid(active.last_movement_pct)?
+   (Number(active.last_movement_pct)>0?"+":"")+n(active.last_movement_pct,4)+"%":"Sem movimento recente validado");
+ set("goldDistance15",good&&isCurrent&&valid(active.sigma15_multiples)?n(active.sigma15_multiples,2)+" σ":"—");
+ set("goldDistance60",good&&isCurrent&&valid(active.sigma60_multiples)?n(active.sigma60_multiples,2)+" σ":"—");
+ set("goldDataQuality",good?"Sigma validada · M1 recente · "+clock(s.source_last_minute_utc):
+   warmup?"Coleta em andamento: "+Math.max(0,Number(s.n60)||0)+"/60 retornos M1 consecutivos; sigmas e múltiplos aguardam validação.":
+   "Dados não liberados: "+(s?.source_state||"fonte indisponível")+". Não apresentar valores antigos como tempo real.");
  set("goldLastUpdated",clock(s?.source_last_minute_utc));
  const mini=el("goldSummaryToday");
  if(mini){
