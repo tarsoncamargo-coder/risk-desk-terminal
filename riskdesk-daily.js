@@ -92,7 +92,25 @@ function show(data,errors){
  const mkrow=(name,value,delta,status,ts)=>[name,value,"—",changePct(delta),ok(delta)?Number(delta):null,status,ts?stamp(ts):""];
  const series=(k)=>snap?.[k+"_15m_pct"];
  const aligned=recent(snap?.anchor_utc,20)&&recent(snap?.assessed_at_utc,20);
- const sourceStatus=k=>{const v=snap?.[k+"_source_status"];return aligned&&ok(series(k))&&v&&!/STALE|UNAVAILABLE|MISSING|INVALID/.test(String(v).toUpperCase())?"Atualizado":v?"Atrasado":"Indisponível"};
+ const healthByKey=new Map((data.health||[]).map(x=>[x.item_key,x]));
+ const marketHealth=k=>{
+  const status=String(healthByKey.get(k)?.diagnostic_status||"").toUpperCase();
+  if(!status)return "Sem fonte";
+  if(status.includes("OUTSIDE_EXPECTED")||status.includes("FORA_SESSAO"))return "Fora sessão";
+  if(status.includes("FAILED")||status.includes("INVALID"))return "Inválido";
+  if(status.includes("STALE")||status.includes("DELAYED"))return "Atrasado";
+  if(status.includes("FRESH")||status.includes("OK"))return "Contexto";
+  return "Sem leitura";
+ };
+ const nqExpansion=benchRatioReady(nqHist)?Number(nqHist.expansion_ratio):null;
+ const goldExpansion=benchRatioReady(goldHist)?Number(goldHist.expansion_ratio):null;
+ const formatExpansion=v=>v===null?"SEM COMPARAÇÃO":(num(v,2)+"× · "+(v>=1.25?"EXPANSÃO":v<0.8?"COMPRESSÃO":"FAIXA USUAL"));
+ put("rdDailyMacroState",c?.research_data_status==="NQ_DATA_NOT_FRESH"?"SEM DADOS FRESCOS":(c?.fresh_sources||0)+"/"+(c?.total_sources||4)+" FONTES FRESCAS");
+ put("rdDailyNqState",nqGood&&ok(ns?.sigma_15m_points)?"σ15 ±"+num(ns.sigma_15m_points)+" pts":"SIGMA INDISPONÍVEL");
+ put("rdDailyGoldState",goldGood&&ok(gs?.sigma_15m_points)?"σ15 ±"+num(gs.sigma_15m_points)+" pts":"SIGMA INDISPONÍVEL");
+ put("rdDailyNqDetail",formatExpansion(nqExpansion)+" · histórico MNQ proxy / pesquisa");
+ put("rdDailyGoldDetail",formatExpansion(goldExpansion)+" · histórico MGC / pesquisa");
+ const sourceStatus=k=>{const v=snap?.[k+"_source_status"];return aligned&&ok(series(k))&&v&&!/STALE|UNAVAILABLE|MISSING|INVALID/.test(String(v).toUpperCase())?"Atualizado":marketHealth({nq:"ASSET_NQ",zt:"ASSET_ZT",zn:"ASSET_ZN",dxy:"ASSET_DXY"}[k])};
  const macroRows=[
   mkrow("NQ","—",aligned?series("nq"):null,sourceStatus("nq"),snap?.anchor_utc),
   mkrow("ZT · futuro 2Y","—",aligned?series("zt"):null,sourceStatus("zt"),snap?.anchor_utc),
@@ -100,12 +118,14 @@ function show(data,errors){
   mkrow("DXY · MT5","—",aligned?series("dxy_mt5"):null,sourceStatus("dxy"),snap?.anchor_utc),
   ["ZQ sintético",ok(fed?.zq_flat_weighted)?num(fed.zq_flat_weighted,4):"—","—","—","—",fed?"Contexto":"Indisponível","Cenário hipotético, não cotação"],
   ["ZQ negociado",fed?.official_settlement_verified&&ok(fed.cme_daily_settlement)?num(fed.cme_daily_settlement,4):"—","—","—","—",fed?.official_settlement_verified?"Diário":"Indisponível","Settlement CME verificado apenas quando disponível"],
-  ["VXN","—","—","—","—","Indisponível","Sem cotação e baseline sincronizados neste radar"],
-  ["VIX","—","—","—","—","Indisponível","Sem cotação e baseline sincronizados neste radar"]
+  ["VXN","—","—","—","—",marketHealth("ASSET_VXN"),"Sem cotação e baseline sincronizados neste radar"],
+  ["VIX","—","—","—","—",marketHealth("ASSET_VIX"),"Sem cotação e baseline sincronizados neste radar"]
  ];
  renderTable("rdDailyMacro","RADAR MACRO · 15 MIN",macroRows,"Variações de NQ, ZT, ZN e DXY representam % em 15 minutos; valores absolutos e mudanças em pontos não estão liberados nesta fonte. ZT/ZN são preços de futuros, não yields. ");
  const mkSigma=(x,k,good)=>["σ "+k+"m",good?("±"+num(x?.["sigma_"+k+"m_points"])+" pts"):"—","—","—","—",good?"Atualizado":"Indisponível","Sigma realizada, não IV"];
  const nqRows=[...([5,15,30,60].map(k=>mkSigma(ns,k,nqGood))),
+ ["Preço atual do NQ","—","—","—","—","Restrito","Cotação bruta não redistribuída nesta API pública"],
+ ["Bandas desde PR · ±σ15","—","—","—","—","Pendente","Exigem PR absoluto autorizado e sigma congelada no instante da captura"],
  ["PR congelado",nq?.price_reference_is_frozen?"Capturado":"—","—","—","—",nq?"Contexto":"Indisponível",nq?.status||""],
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
@@ -116,6 +136,8 @@ function show(data,errors){
  ];
  renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Histórico MNQ V3: proxy QA por 199 comparações de σ15 (p95 9,04%). Índice apenas de pesquisa em fechamento alinhado de 5 minutos; não autorizado para trading. Volatilidade LIVE: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
  const gRows=[...([5,15,30,60].map(k=>mkSigma(gs,k,goldGood))),
+ ["Preço atual do MGC","—","—","—","—","Restrito","Cotação bruta não redistribuída nesta API pública"],
+ ["Bandas desde PR · ±σ15","—","—","—","—","Pendente","Exigem PR absoluto autorizado e sigma congelada no instante da captura"],
  ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
