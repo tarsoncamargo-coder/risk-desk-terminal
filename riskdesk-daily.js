@@ -10,6 +10,9 @@ const recent=(v,m=6)=>{const t=Date.parse(v||"");return Number.isFinite(t)&&(Dat
 const put=(id,s)=>{if($(id))$(id).textContent=s};
 const mk=(tag,cl,txt)=>{const e=document.createElement(tag);e.className=cl;e.textContent=txt;return e};
 const request=(table,params)=>api(table,params).then(v=>Array.isArray(v)?v:[]);
+const radarFilters={macro:"all"};
+const alertStates=/ATRASAD|INVÁLID|INDISPON|FORA SESS|SEM FONTE|PENDENTE|RESTRITO/i;
+const availableStates=/TEÓRICO|ATUALIZADO|CONTEXTO|HISTÓRICO|DIÁRIO|PESQUISA/i;
 const sources=[
  ["context","riskdesk_j14c_context_site_v1","select=*&limit=1"],
  ["nqSigma","riskdesk_j14k_sigma_research_site_v1","select=*&limit=1"],
@@ -56,12 +59,28 @@ function card(host,title,sub,items){
 function renderTable(host,title,rows,foot){
  const root=$(host);if(!root)return;root.replaceChildren();
  root.append(mk("div","rd-daily-title",title));
+ const isMacro=host==="rdDailyMacro";
+ if(isMacro){
+  const tools=mk("div","rd-terminal-filterbar","");
+  tools.append(mk("span","rd-terminal-filterlabel","MOSTRAR"));
+  for(const [mode,label] of [["all","Todos"],["alert","Alertas"],["available","Disponíveis"]]){
+   const btn=mk("button","rd-terminal-filter"+(radarFilters.macro===mode?" is-active":""),label);
+   btn.type="button";
+   btn.setAttribute("aria-pressed",String(radarFilters.macro===mode));
+   btn.addEventListener("click",()=>{radarFilters.macro=mode;renderTable(host,title,rows,foot);});
+   tools.append(btn);
+  }
+  root.append(tools);
+ }
+ const visibleRows=isMacro?rows.filter(r=>radarFilters.macro==="all"||
+   radarFilters.macro==="alert"&&alertStates.test(String(r[5]))||
+   radarFilters.macro==="available"&&availableStates.test(String(r[5]))):rows;
  const wrap=mk("div","rd-daily-scroll","");
  const table=mk("table","rd-radar-table","");
  const thead=mk("thead","","");const trh=mk("tr","","");
  ["Ativo","Valor","Variação","%","Direção","Status"].forEach(v=>trh.append(mk("th","",v)));
  thead.append(trh);table.append(thead);const body=mk("tbody","","");
- for(const row of rows){
+ for(const row of visibleRows){
   const tr=mk("tr","","");
   const [name,value,change,pc,direction,status,age]=row;
   const dir=typeof direction==="number"?(direction>0?"↑":direction<0?"↓":"→"):"—";
@@ -70,7 +89,15 @@ function renderTable(host,title,rows,foot){
   if(age)tr.title=age;
   body.append(tr);
  }
+ if(!visibleRows.length){
+  const td=mk("td","rd-radar-empty","Nenhum ativo neste filtro. Selecione Todos para ver todas as fontes.");
+  td.colSpan=6;
+  const emptyTr=mk("tr","","");emptyTr.append(td);body.append(emptyTr);
+ }
  table.append(body);wrap.append(table);root.append(wrap);
+ if(isMacro)root.append(mk("div","rd-terminal-resultcount",
+   visibleRows.length+" de "+rows.length+" linhas · filtro: "+
+   ({all:"todos",alert:"alertas",available:"disponíveis"}[radarFilters.macro])));
  if(foot)root.append(mk("div","rd-daily-muted",foot));
 }
 function tableNum(x,d=2){return ok(x)?num(x,d):"—"}
