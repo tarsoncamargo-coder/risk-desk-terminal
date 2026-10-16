@@ -57,3 +57,12 @@
 #leitura .rd-terminal-resultcount{padding:8px 16px;font-size:10px;color:#8aa1b2;text-align:right;letter-spacing:.035em}
 #leitura .rd-radar-empty{color:#95aabb;text-align:center!important;padding:23px 12px!important;font-size:12px}
 @media(max-width:650px){#leitura .rd-terminal-filterbar{padding:0 11px 11px}#leitura .rd-terminal-filter{padding:8px 10px}}
+
+/* Legenda de proveniência, sem substituir os estados de qualidade por cor. */
+#leitura .rd-terminal-regimes{display:flex;flex-wrap:wrap;align-items:center;gap:6px 22px;margin:-6px 0 18px;padding:10px 2px;color:#8299aa;font-size:11px;line-height:1.6}
+#leitura .rd-terminal-regimes span{display:inline-flex;align-items:center;gap:8px}
+#leitura .rd-terminal-regimes b{font-size:9px;font-weight:850;letter-spacing:.08em;border-radius:3px;padding:2px 5px;border:1px solid #304657;color:#a6c3d4}
+#leitura .rd-terminal-regimes .rd-regime-live{border-color:#35645b;color:#76d3aa}
+#leitura .rd-terminal-regimes .rd-regime-historical{border-color:#416a85;color:#8fcae8}
+#leitura .rd-terminal-regimes .rd-regime-theoretical{border-color:#745a35;color:#e4be7c}
+@media(max-width:650px){#leitura .rd-terminal-regimes{display:grid;gap:6px;margin:0 0 14px;padding:7px 1px}}
