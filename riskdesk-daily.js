@@ -101,14 +101,20 @@ function show(data,errors){
  ["PR congelado",nq?.price_reference_is_frozen?"Capturado":"—","—","—","—",nq?"Contexto":"Indisponível",nq?.status||""],
  ["Distância do PR",nqFresh?((Number(nq.movement_since_reference_points)>0?"+":"")+num(nq.movement_since_reference_points)+" pts"):"—",nqFresh?num(nq.movement_since_reference_points)+" pts":"—",nqFresh?changePct(nq.movement_since_reference_pct):"—",nqFresh?Number(nq.movement_since_reference_points):null,nqFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",nqFresh&&nqGood&&ok(nq.travelled_current_sigma15)&&ok(nq.travelled_current_sigma60)?num(nq.travelled_current_sigma15)+" / "+num(nq.travelled_current_sigma60):"—","—","—","—",nqFresh&&nqGood?"Contexto":"Indisponível",""],
- ["σ anterior / histórica","—","—","—","—","Indisponível","Requer benchmark de mesma sessão e horário"]
+ ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
+ ["σ mediana histórica · horário","—","—","—","—","Indisponível","Mínimo de 20 sessões comparáveis"],
+ ["Expansão / compressão",nqGood?String(ns.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",nqGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
+ ["Índice expansão vs. mediana","—","—","—","—","Indisponível","Aguardando mediana e percentis P75 / P90"]
  ];
  renderTable("rdDailyNasdaq","RADAR NASDAQ · NQ",nqRows,"Volatilidade: "+(nqGood?String(ns.volatility_regime||"Indeterminada").replaceAll("_"," "):"sem amostra atual")+" · Macro: "+(c?.research_data_status||"sem validação"));
  const gRows=[...([5,15,30,60].map(k=>mkSigma(gs,k,goldGood))),
  ["PR congelado",gold?"Capturado":"—","—","—","—",gold?"Contexto":"Indisponível",gold?.session_code||""],
  ["Distância do PR",goldFresh?((Number(gold.last_movement_usd_per_oz)>0?"+":"")+num(gold.last_movement_usd_per_oz)+" pts"):"—",goldFresh?num(gold.last_movement_usd_per_oz)+" pts":"—",goldFresh?changePct(gold.last_movement_pct):"—",goldFresh?Number(gold.last_movement_usd_per_oz):null,goldFresh?"Atualizado":"Atrasado",""],
  ["Múltiplos σ15 / σ60",goldFresh&&goldGood&&ok(gold.sigma15_multiples)&&ok(gold.sigma60_multiples)?num(gold.sigma15_multiples)+" / "+num(gold.sigma60_multiples):"—","—","—","—",goldFresh&&goldGood?"Contexto":"Indisponível",""],
- ["σ anterior / histórica","—","—","—","—","Indisponível","Histórico mesmo horário ainda insuficiente"]
+ ["σ anterior · mesmo horário","—","—","—","—","Indisponível","Histórico da sessão anterior ainda não validado"],
+ ["σ mediana histórica · horário","—","—","—","—","Indisponível","Mínimo de 20 sessões comparáveis"],
+ ["Expansão / compressão",goldGood?String(gs.volatility_regime||"INDETERMINADO").replaceAll("_"," "):"—","—","—","—",goldGood?"Contexto":"Indisponível","Regime relativo atual; não é índice histórico"],
+ ["Índice expansão vs. mediana","—","—","—","—","Indisponível","Aguardando mediana e percentis P75 / P90"]
  ];
  renderTable("rdDailyGold","RADAR OURO · MGC",gRows,"Confluência: DXY + ZT/ZN + volatilidade. Viés direcional não autorizado sem dados convergentes.");
  put("rdDailyStamp","Consulta: "+stamp(new Date().toISOString())+" BRT"+(errors.length?" · Falha de fontes: "+errors.join(", "):""));
