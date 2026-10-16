@@ -12,7 +12,6 @@ const mk=(tag,cl,txt)=>{const e=document.createElement(tag);e.className=cl;e.tex
 const request=(table,params)=>api(table,params).then(v=>Array.isArray(v)?v:[]);
 const sources=[
  ["context","riskdesk_j14c_context_site_v1","select=*&limit=1"],
- ["snap","riskdesk_j14c_continuous_shadow_snapshots_v1","select=*&order=assessed_at_utc.desc&limit=1"],
  ["nqSigma","riskdesk_j14k_sigma_research_site_v1","select=*&limit=1"],
  ["nqPR","riskdesk_j14l_anchor_context_site_v1","select=*&order=last_updated_at_utc.desc&limit=5"],
  ["goldSigma","riskdesk_j15_gold_sigma_site_v1","select=*&limit=1"],
