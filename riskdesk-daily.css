@@ -66,3 +66,32 @@
 #leitura .rd-terminal-regimes .rd-regime-historical{border-color:#416a85;color:#8fcae8}
 #leitura .rd-terminal-regimes .rd-regime-theoretical{border-color:#745a35;color:#e4be7c}
 @media(max-width:650px){#leitura .rd-terminal-regimes{display:grid;gap:6px;margin:0 0 14px;padding:7px 1px}}
+
+/* Quadro histórico: resumo de leitura rápida, sem duplicar o PR ativo. */
+#leitura .rd-hist-overview{margin:0 0 10px}
+#leitura .rd-hist-overview-head{display:flex;justify-content:space-between;align-items:end;gap:18px;margin:8px 1px 13px}
+#leitura .rd-hist-eyebrow{font-size:9px;font-weight:850;letter-spacing:.15em;color:#78bdd0;margin-bottom:5px}
+#leitura .rd-hist-overview-head h2{font-size:18px;font-weight:820;letter-spacing:-.02em;margin:0;color:#e9f2fa}
+#leitura .rd-hist-overview-head p{font-size:11px;max-width:540px;color:#8299ab;margin:0;line-height:1.4}
+#leitura .rd-hist-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+#leitura .rd-hist-card{background:#0d1925;border:1px solid #294252;border-radius:9px;overflow:hidden;padding:16px 17px 13px;box-shadow:0 9px 22px #00000018;min-width:0}
+#leitura .rd-hist-card--nq{border-top:2px solid #42c3df}
+#leitura .rd-hist-card--gold{border-top:2px solid #e4b660}
+#leitura .rd-hist-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+#leitura .rd-hist-card-head strong{font-size:12px;letter-spacing:.07em;font-weight:850;color:#e2edf5}
+#leitura .rd-hist-classification{font-size:9px;letter-spacing:.075em;font-weight:850;border:1px solid #3b6884;background:#122b3b;color:#8cd0ee;border-radius:4px;padding:4px 7px;white-space:nowrap}
+#leitura .rd-hist-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid #273e4d;border-radius:6px;background:#091621;overflow:hidden}
+#leitura .rd-hist-metric{display:grid;align-content:center;gap:8px;min-width:0;padding:12px 10px;border-right:1px solid #263b49}
+#leitura .rd-hist-metric:last-child{border-right:0}
+#leitura .rd-hist-metric>span{font-size:10px;color:#8fa9bc;white-space:nowrap}
+#leitura .rd-hist-metric>strong{font-size:clamp(13px,1.22vw,16px);font-weight:850;font-variant-numeric:tabular-nums;color:#eef6fa;white-space:nowrap;letter-spacing:-.025em}
+#leitura .rd-hist-provenance{font-size:10px;color:#8da6b8;line-height:1.45;margin:11px 0 0}
+#leitura .rd-hist-empty,#leitura .rd-hist-placeholder{font-size:11px;color:#b1a18b;padding:12px;margin:0;line-height:1.5}
+#leitura .rd-terminal-jumps{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:13px 0;padding:0 2px}
+#leitura .rd-terminal-jumps span{font-size:9px;color:#8298aa;font-weight:850;letter-spacing:.09em;margin-right:6px}
+#leitura .rd-terminal-jumps a{color:#a4cfe1;background:#142635;border:1px solid #304e61;text-decoration:none;padding:7px 12px;border-radius:6px;font-size:11px;font-weight:730}
+#leitura .rd-terminal-jumps a:hover{background:#203849;color:#e9f8ff}
+#leitura .rd-terminal-jumps a:focus-visible{outline:2px solid #66cce5;outline-offset:2px}
+#leitura #rdDailyMacro,#leitura #rdDailyNasdaq,#leitura #rdDailyGold{scroll-margin-top:185px}
+@media(max-width:1180px){#leitura .rd-hist-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#leitura .rd-hist-metric:nth-child(2){border-right:0}#leitura .rd-hist-metric:nth-child(-n+2){border-bottom:1px solid #263b49}}
+@media(max-width:750px){#leitura .rd-hist-grid{grid-template-columns:1fr}#leitura .rd-hist-overview-head{align-items:start;flex-direction:column;gap:7px}#leitura .rd-hist-overview-head h2{font-size:17px}#leitura .rd-hist-card{padding:13px}}
