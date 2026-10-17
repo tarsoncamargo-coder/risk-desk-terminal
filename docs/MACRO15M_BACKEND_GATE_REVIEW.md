@@ -1,5 +1,25 @@
 # J14C macro 15m — contrato server-side (PROPOSTA; DESATIVADO)
 
+## Decisão de acesso — proprietário único (17/10/2026)
+- Requisito confirmado: **somente o proprietário utiliza o Risk Desk**, sem acesso de convidados.
+- Vercel preview com SSO: verificado, mas a configuração não autoriza automaticamente chamadas anônimas ao Supabase nem identifica um proprietário dentro da API.
+- GitHub `tarsoncamargo-coder/risk-desk-terminal`: visibilidade atual **public**. A hospedagem GitHub Pages e arquivos estáticos públicos não atendem, sozinhos, ao objetivo de acesso exclusivo. Alterar visibilidade do repositório/desativar Pages exige aprovação explícita e checagem dos efeitos de hospedagem.
+- Supabase projeto `pkmjknlbsptqhanejddm`: na verificação read-only de 17/10, `auth.users` tinha **0** registros; nenhuma identidade própria para allowlist está cadastrada. Não assumir e-mail/UID do proprietário; não criar login por conta própria.
+- `anon` e `authenticated` **não** possuem SELECT no snapshot privado J14C. Manter assim. O login de um só usuário não é justificativa para abrir grants.
+- Para ativação: cadastrar **uma** identidade Supabase Auth validada (por exemplo link de e-mail), definir o `auth.uid()` proprietário em configuração restrita e exigir credencial verificada no endpoint/Edge Function. Exigir coincidência exata com o UID autorizado; qualquer outra identidade recebe 403. Não confiar em `X-User`, e-mail informado pelo cliente ou claims sem assinatura verificada.
+- Chaves privilegiadas (se realmente necessárias) apenas no servidor, nunca no GitHub, páginas estáticas, JS do browser, screenshots ou links. Endpoints protegidos não podem aceitar diretamente `anon` ou segredo compartilhado no frontend.
+- Como o site é uma aplicação estática com publicação também por GitHub Pages, **não habilitar a chamada client-side** a endpoints proprietários antes de decidir a migração de hospedagem privada. Não confiar apenas na obscuridade do domínio da Vercel.
+- Manter a política de licenciamento/direitos das fontes e derivados como pré-requisito independente, mesmo para uso individual.
+
+### Ordem de implementação proposta (sem autorização de produção)
+1. Revisar autorização do usuário para restringir acesso público ao código/Páginas e confirmar efeitos sobre links atuais.
+2. Criar/validar login pessoal sem expor identificadores no repositório; ativar autenticação e autorização em ambiente de teste.
+3. Disponibilizar rota privada com controle de sessão verificada, allowlist por UID, filtro J14C, `Cache-Control: private, no-store`, sem CORS público e sem preços brutos.
+4. Testar 401 anônimo, 403 usuário diferente, 200 proprietário, sessão revogada/expirada, 503 configuração incompleta e freshness/zero inválido.
+5. Somente após validação de licença e autorização expressa, promover as alterações necessárias à hospedagem e ao banco.
+
+**Estado:** contrato owner-only documentado; login, rota e migração de visibilidade NÃO ativados.
+
 **Escopo:** pesquisa privada no Risk Desk. Não há rota HTTP, função Supabase, GRANT, segredo ou deploy em produção incluídos neste conjunto.
 
 ## Diagnóstico verificado
