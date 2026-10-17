@@ -93,11 +93,17 @@ function renderTable(host,title,rows,foot){
  thead.append(trh);table.append(thead);const body=mk("tbody","","");
  for(const row of visibleRows){
   const tr=mk("tr","","");
-  const [name,value,change,pc,direction,status,age]=row;
+  const [name,value,change,pc,direction,status,age,subline]=row;
   const dir=typeof direction==="number"?(direction>0?"↑":direction<0?"↓":"→"):"—";
   const tone=dir==="↑"?"up":dir==="↓"?"down":dir==="→"?"flat":"missing";
-  [[name,"rd-radar-name"],[value,"rd-radar-number"],[change,"rd-radar-number"],[pc,"rd-radar-number"],[dir,"rd-radar-direction rd-radar-direction--"+tone],[status,"rd-radar-status rd-radar-status--"+statusTone(status)]].forEach(([value,cl])=>tr.append(mk("td",cl,String(value))));
-  if(age)tr.title=age;
+  const cellName=mk("td","rd-radar-name","");
+  if(isMacro&&subline){
+   cellName.append(mk("div","rd-radar-name-main",String(name)),
+    mk("small","rd-radar-source-meta",String(subline)));
+  }else cellName.textContent=String(name);
+  tr.append(cellName);
+  [[value,"rd-radar-number"],[change,"rd-radar-number"],[pc,"rd-radar-number"],[dir,"rd-radar-direction rd-radar-direction--"+tone],[status,"rd-radar-status rd-radar-status--"+statusTone(status)]].forEach(([value,cl])=>tr.append(mk("td",cl,String(value))));
+  if(age)tr.title=String(age);
   body.append(tr);
  }
  if(!visibleRows.length){
@@ -219,7 +225,16 @@ function show(data,errors){
   formatExpansion(nqExpansion)+" · histórico MNQ proxy / pesquisa");
  put("rdDailyGoldDetail",futuresClosed&&!goldGood?"Sem sigma LIVE · histórico MGC disponível para pesquisa":
   formatExpansion(goldExpansion)+" · histórico MGC / pesquisa");
- const mkHealthRow=(label,k)=>[label,"—","—","—",null,marketHealth(k),"Fonte: "+(healthByKey.get(k)?.source_name||"não identificada")+" · "+(healthByKey.get(k)?.explanation_pt||"sem delta 15m saneado")];
+ const mkHealthRow=(label,k)=>{
+  const h=healthByKey.get(k);
+  const provider=String(h?.source_name||"Fonte não identificada");
+  const marketAt=h?.last_market_ts_utc?stamp(h.last_market_ts_utc)+" BRT":"sem observação";
+  const receiptAt=h?.last_received_ts_utc?stamp(h.last_received_ts_utc)+" BRT":"sem recebimento";
+  const metadata=provider+" · observação "+marketAt;
+  return [label,"—","—","—",null,marketHealth(k),
+   "Fonte "+provider+" · observado "+marketAt+" · recebido "+receiptAt+" · "+
+   (h?.explanation_pt||"variação de 15min não liberada nesta API"),metadata];
+ };
  const fedProjection=recent(fed?.calculated_at_utc,1440)&&
     fed?.source==="NYFED_EFFR_CALENDAR_WEIGHTED_PROJECTION"&&
     fed?.operational_use_authorized===false&&
@@ -229,7 +244,7 @@ function show(data,errors){
   mkHealthRow("NQ · futuro Nasdaq","ASSET_NQ"),
   mkHealthRow("ZT · futuro Treasury 2Y","ASSET_ZT"),
   mkHealthRow("ZN · futuro Treasury 10Y","ASSET_ZN"),
-  mkHealthRow("DXY · índice do dólar","ASSET_DXY"),
+  mkHealthRow("DXY · Yahoo (contexto atrasado)","ASSET_DXY"),
   ["ZQ sintético · manutenção",fedProjection?num(fed.zq_flat_weighted,4):"—","—","—",null,fedProjection?"Teórico":"Indisponível","Cenário ponderado NY Fed/EFFR, não uma cotação negociada"],
   ["ZQ sintético · corte 25pb",fedProjection&&ok(fed.zq_cut25_weighted)?num(fed.zq_cut25_weighted,4):"—","—","—",null,fedProjection?"Teórico":"Indisponível","Hipótese de corte, não probabilidade FedWatch"],
   ["ZQ sintético · alta 25pb",fedProjection&&ok(fed.zq_hike25_weighted)?num(fed.zq_hike25_weighted,4):"—","—","—",null,fedProjection?"Teórico":"Indisponível","Hipótese de alta, não probabilidade FedWatch"],
@@ -237,7 +252,7 @@ function show(data,errors){
   mkHealthRow("VXN · IV Nasdaq","ASSET_VXN"),
   mkHealthRow("VIX · IV S&P 500","ASSET_VIX")
  ];
- renderTable("rdDailyMacro","RADAR MACRO · COBERTURA E CENÁRIOS",macroRows,"Variações de 15 minutos e cotações de NQ, ZT, ZN e DXY ainda não estão publicadas na API saneada. Estado da fonte não substitui variação de preço. ZT/ZN são preços de futuros, não yields. ZQ sintético é uma projeção ponderada, não um settlement negociado.");
+ renderTable("rdDailyMacro","RADAR MACRO · COBERTURA E CENÁRIOS",macroRows,"Variações de 15 minutos de NQ, ZT, ZN e DXY aguardam API saneada autorizada; traço não significa 0%. A saúde exibida não é a variação e NUNCA transforma dado antigo em LIVE. DXY Yahoo é contexto atrasado e NÃO deve ser confundido com DXY sintético MT5 shadow. ZT/ZN são preços futuros, não yields. ZQ sintético é projeção, não settlement negociado.");
  const mkSigma=(x,k,good)=>["σ "+k+"m",good?("±"+num(x?.["sigma_"+k+"m_points"])+" pts"):"—","—","—","—",good?"Atualizado":futuresClosed?"Fora sessão":"Indisponível","Sigma realizada LIVE, não IV"];
  const histRow=(label,x,value,detail)=>{
   const valid=benchReady(x)&&ok(value);
