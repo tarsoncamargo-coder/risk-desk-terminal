@@ -43,6 +43,8 @@ jobs:
           node tests/mt5-shadow-hoje.test.cjs
           node tests/options-core.test.cjs
           node tests/options-persistence.test.cjs
+          node --check ops/macro15m-sanitizer.cjs
+          node tests/macro15m-sanitizer.test.cjs
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
