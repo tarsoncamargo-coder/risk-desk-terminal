@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="market-visual-live.css">
 <link rel="stylesheet" href="historico-clean-v8.css">
 <link rel="stylesheet" href="riskdesk-unified.css">
-<link rel="stylesheet" href="riskdesk-daily.css?v=20261016terminal-v3">
+<link rel="stylesheet" href="riskdesk-daily.css?v=20261016terminal-v4">
 <link rel="stylesheet" href="event-monitor.css">
 <link rel="stylesheet" href="confluence-v2.css">
 <link rel="stylesheet" href="options.css">
@@ -57,6 +57,24 @@
   <span><b class="rd-regime-historical">HISTÓRICO</b> percentis e sessões anteriores</span>
   <span><b class="rd-regime-theoretical">TEÓRICO</b> projeções, não cotações negociadas</span>
  </div>
+ <section class="rd-hist-overview" aria-label="Resumo de referências históricas">
+  <div class="rd-hist-overview-head">
+   <div>
+    <div class="rd-hist-eyebrow">VOLATILIDADE REALIZADA / GLOBEX V3</div>
+    <h2>Referências históricas por horário</h2>
+   </div>
+   <p>Comparação estatística baseada em M1 arquivado. Não representa sigma LIVE, IV, DP ou sinal de entrada.</p>
+  </div>
+  <div id="rdDailyHistoricalOverview" class="rd-hist-grid" aria-live="polite">
+   <p class="rd-hist-placeholder">Consultando referências históricas…</p>
+  </div>
+ </section>
+ <nav class="rd-terminal-jumps" aria-label="Ir para uma seção da leitura diária">
+  <span>IR PARA</span>
+  <a href="#rdDailyMacro">Radar macro</a>
+  <a href="#rdDailyNasdaq">Nasdaq</a>
+  <a href="#rdDailyGold">Ouro</a>
+ </nav>
  <div class="rd-terminal-stack" aria-label="Tabelas de pesquisa do Risk Desk">
   <section id="rdDailyMacro" class="rd-orch rd-terminal-market" aria-label="Radar macro"></section>
   <section id="rdDailyNasdaq" class="rd-orch rd-terminal-market" aria-label="Radar Nasdaq"></section>
@@ -161,7 +179,7 @@
 <script src="j14h-volatility.js"></script>
 <script src="riskdesk-unified.js"></script>
 <script src="riskdesk-gold.js?v=j15-dashboard-v3-20261016"></script>
-<script src="riskdesk-daily.js?v=20261016terminal-v2"></script>
+<script src="riskdesk-daily.js?v=20261016terminal-v4"></script>
 <script src="riskdesk-event-agenda.js"></script>
 <script src="mt5-shadow-hoje.js"></script>
 <script src="market-visual-live.js"></script>
