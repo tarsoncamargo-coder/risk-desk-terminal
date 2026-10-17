@@ -139,6 +139,34 @@ function show(data,errors){
  const benchRatioReady=x=>benchReady(x)&&recent(x?.refreshed_at_utc,3)&&((x.asset==="MGC"&&x.research_status==="HISTORICAL_RESEARCH_COMPARISON_READY")||(x.asset==="NQ"&&x.research_status==="MNQ_PROXY_RESEARCH_COMPARISON_READY"&&x.historical_provenance==="MNQ_PROXY_RESEARCH_QA_199_WINDOWS_NONOPERATIVE"))&&recent(x?.live_bar_minute_utc,6)&&ok(x?.expansion_ratio);
  const benchInfo=x=>!x?"Referência M1 V3 não consultada":x.research_status==="BASELINE_V3_ASOF_SESSION_MISSING"?"HISTÓRICO V3 DESATUALIZADO: importar novos M1 para a sessão "+(x.live_globex_session_date||"—"):x.asset==="NQ"?"Proxy MNQ "+(x.historical_contract||"")+" · "+Number(x.comparable_globex_sessions||0)+" sessões anteriores · QA 199 janelas, p95 9,04% · somente pesquisa · base "+(x.asof_globex_session_date||"—"):(Number(x.comparable_globex_sessions||0)+" sessões anteriores · faixa "+(x.comparison_clock_brt||"—")+" BRT · "+(x.historical_contract||"")+" · base "+(x.asof_globex_session_date||"—")+" · V3 pesquisa");
  const percentileInfo=x=>benchReady(x)?("P75: ±"+num(x.p75_15m_points)+" pts · P90: ±"+num(x.p90_15m_points)+" pts · pesquisa histórica · referência "+(x.asof_globex_session_date||"—")+" às "+(x.comparison_clock_brt||"—")+" BRT"):"Sem percentis Globex validados neste contrato";
+ const overview=$("rdDailyHistoricalOverview");
+ if(overview){
+  overview.replaceChildren();
+  for(const [label,x,isGold] of [["NASDAQ · PROXY MNQ",nqHist,false],["OURO · MGC",goldHist,true]]){
+   const article=mk("article","rd-hist-card "+(isGold?"rd-hist-card--gold":"rd-hist-card--nq"),"");
+   const head=mk("div","rd-hist-card-head","");
+   head.append(mk("strong","",label),
+    mk("span","rd-hist-classification",benchReady(x)?"HISTÓRICO":"SEM REFERÊNCIA"));
+   article.append(head);
+   if(benchReady(x)){
+    const metrics=mk("div","rd-hist-metrics","");
+    for(const [label,value] of [["σ anterior",x.previous_sigma15_points],["Mediana",x.median_15m_points],["P75",x.p75_15m_points],["P90",x.p90_15m_points]]){
+     const metric=mk("div","rd-hist-metric","");
+     metric.append(mk("span","",label),mk("strong","", "±"+num(value)+" pts"));
+     metrics.append(metric);
+    }
+    article.append(metrics);
+    article.append(mk("p","rd-hist-provenance",
+     "Base "+x.asof_globex_session_date+" · "+(x.comparison_clock_brt||"—")+
+     " BRT · "+Number(x.comparable_globex_sessions)+" sessões · "+
+     (x.historical_contract||"—")+(isGold?" · mesmo contrato":" · proxy de pesquisa, não NQ")));
+   }else{
+    article.append(mk("p","rd-hist-empty",benchInfo(x)+" · Nenhum valor histórico apresentado sem auditoria válida."));
+   }
+   overview.append(article);
+  }
+ }
+
 
  const gs=data.goldSigma?.[0],gold=(data.goldPR||[]).find(x=>x.reference_locked),fed=data.fed?.[0];
  const nqGood=/PASS|READY|OK/.test(String(ns?.quality_status||"").toUpperCase())&&recent(ns?.source_minute_utc)&&Number(ns?.contiguous_returns_60m)>=60&&ok(ns?.sigma_60m_points);
