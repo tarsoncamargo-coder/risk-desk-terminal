@@ -45,6 +45,9 @@ jobs:
           node tests/options-persistence.test.cjs
           node --check ops/macro15m-sanitizer.cjs
           node tests/macro15m-sanitizer.test.cjs
+          node --check ops/private-cutover-audit.cjs
+          node tests/private-cutover-audit.test.cjs
+          node ops/private-cutover-audit.cjs --expect-parallel
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
