@@ -120,10 +120,24 @@ function show(data,errors){
  // Histórico V3 é uma referência imutável da sessão/horário registrado e não depende de
  // nova cotação M1 nem do cron continuar rodando após o fechamento de sexta.
  // A razão de expansão LIVE mantém gates próprios de frescor/qualidade abaixo.
- const benchReady=x=>x?.data_regime==="HISTORICO_M1_GLOBEX_V3_PESQUISA"&&
+ const benchContractOk=x=>{
+  if(!x)return false;
+  if(x.asset==="MGC")return x.live_contract===x.historical_contract&&
+    /^MGC \d{2}-\d{2}$/.test(String(x.historical_contract||""))&&
+    x.historical_provenance==="MGC_SAME_CONTRACT_M1_RESEARCH";
+  if(x.asset==="NQ")return /^NQ \d{2}-\d{2}$/.test(String(x.live_contract||""))&&
+    x.historical_contract==="M"+x.live_contract&&
+    x.historical_provenance==="MNQ_PROXY_RESEARCH_QA_199_WINDOWS_NONOPERATIVE";
+  return false;
+ };
+ const benchReady=x=>benchContractOk(x)&&x?.data_regime==="HISTORICO_M1_GLOBEX_V3_PESQUISA"&&
    x?.trading_authorized===false&&
    /^\d{4}-\d{2}-\d{2}$/.test(String(x?.asof_globex_session_date||""))&&
    x?.asof_globex_session_date===x?.live_globex_session_date&&
+   /^\d{4}-\d{2}-\d{2}$/.test(String(x?.previous_globex_session_date||""))&&
+   x.previous_globex_session_date<x.asof_globex_session_date&&
+   /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(x?.comparison_clock_brt||""))&&
+   Number(x.comparison_clock_brt.slice(3))%5===0&&
    Number(x?.comparable_globex_sessions)>=20&&
    ok(x?.median_15m_points)&&Number(x.median_15m_points)>0&&
    ok(x?.p75_15m_points)&&Number(x.p75_15m_points)>=Number(x.median_15m_points)&&
