@@ -43,6 +43,8 @@ jobs:
           node tests/mt5-shadow-hoje.test.cjs
           node tests/options-core.test.cjs
           node tests/options-persistence.test.cjs
+          node --check ops/build-public-site.cjs
+          node ops/build-public-site.cjs
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
@@ -53,9 +55,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Build public-only site artifact
+        run: node ops/build-public-site.cjs
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: ".site-dist"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
